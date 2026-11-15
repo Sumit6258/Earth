@@ -1,0 +1,10 @@
+node_modules/
+dist/
+test-results/
+docs/evidence/playwright-report/
+docs/evidence/M0/gibs-*-capabilities.xml
+docs/evidence/M0/persistence-marker.json
+.env
+.env.*
+.DS_Store
+*.log

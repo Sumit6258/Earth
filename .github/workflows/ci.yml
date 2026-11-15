@@ -1,0 +1,86 @@
+name: ci
+
+# Gate 0 + M0 evidence, run on GitHub's own cloud runner (it has internet access, npm, and can install a browser).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
+
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Preflight (Gate 0)
+        id: preflight
+        continue-on-error: true
+        run: node scripts/preflight.mjs --skip repo.remote_write,repo.persistence
+
+      - name: NASA GIBS catalog snapshot
+        id: gibs
+        continue-on-error: true
+        run: node scripts/gibs-catalog.mjs
+
+      - name: Type-check
+        id: types
+        continue-on-error: true
+        run: npm run typecheck
+
+      - name: Acceptance M0 (harness + build + preview)
+        id: accept
+        continue-on-error: true
+        run: npm run accept:M0
+
+      - name: Evidence summary
+        if: always()
+        run: node scripts/ci-summary.mjs >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Bundle evidence
+        if: always()
+        run: |
+          mkdir -p evidence-out
+          cp -r docs/evidence/. evidence-out/ 2>/dev/null || true
+          rm -rf evidence-out/playwright-report evidence-out/M0/*.xml
+          cp -r test-results evidence-out/test-results 2>/dev/null || true
+          cp package-lock.json evidence-out/ 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m0-evidence
+          path: evidence-out
+          retention-days: 30
+
+      - name: Gate
+        if: always()
+        env:
+          PF: ${{ steps.preflight.outcome }}
+          GC: ${{ steps.gibs.outcome }}
+          TY: ${{ steps.types.outcome }}
+          AC: ${{ steps.accept.outcome }}
+        run: |
+          echo "preflight=$PF gibs=$GC types=$TY accept=$AC"
+          for o in "$PF" "$GC" "$TY" "$AC"; do
+            [ "$o" = success ] || { echo "::error::M0 gate failed (preflight=$PF gibs=$GC types=$TY accept=$AC)"; exit 1; }
+          done

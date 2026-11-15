@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>EARTH — under construction</title>
+  <meta name="description" content="EARTH: an interactive, data-driven Earth. Milestone M0 — foundation only.">
+  <meta name="theme-color" content="#000000">
+  <style>
+    :root { color-scheme: dark; }
+    html, body { height: 100%; margin: 0; background: #000; color: #e8ebed; font: 300 14px/1.6 ui-monospace, Menlo, Consolas, monospace; }
+    main { min-height: 100%; display: grid; align-content: center; justify-items: start; padding: 8vw; box-sizing: border-box; }
+    h1 { margin: 0 0 1.2rem; font: 300 clamp(40px, 9vw, 120px)/1 Georgia, 'Times New Roman', serif; letter-spacing: .4em; }
+    p { margin: .2rem 0; max-width: 52ch; color: #9aa4ab; }
+    #build { margin-top: 2rem; font-size: 11px; letter-spacing: .12em; color: #6b757c; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>EARTH</h1>
+    <p>Milestone M0: foundation. The planet is not here yet, and nothing on this page pretends otherwise.</p>
+    <p id="build" data-testid="build-info"></p>
+  </main>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
