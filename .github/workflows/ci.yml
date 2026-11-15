@@ -45,7 +45,10 @@ jobs:
       - name: Type-check
         id: types
         continue-on-error: true
-        run: npm run typecheck
+        shell: bash
+        run: |
+          mkdir -p docs/evidence/M0
+          npm run typecheck 2>&1 | tee docs/evidence/M0/typecheck.log
 
       - name: Acceptance M0 (harness + build + preview)
         id: accept

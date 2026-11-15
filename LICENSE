@@ -1,0 +1,65 @@
+EARTH — PROPRIETARY LICENSE (ALL RIGHTS RESERVED)
+
+Copyright (c) 2026 Sumit Suman. All rights reserved.
+
+"EARTH" means the project published at https://earth.sumitsuman.com and in this
+repository: its source code, shaders, scripts, tests, build and data-processing
+pipelines, documentation, text, design and visual identity, and the compiled
+website, but not the Third-Party Materials described in section 5.
+
+1. OWNERSHIP
+EARTH is privately owned by Sumit Suman (the "Owner"). Publishing this
+repository publicly does not transfer any rights to anyone, and it is not an
+open-source release.
+
+2. WHAT YOU MAY DO (EDUCATIONAL USE ONLY)
+You may read the source code and documentation, and you may run EARTH on your
+own computer, solely to study how it works, for personal, non-commercial
+learning. You may quote short excerpts, with attribution to the Owner, for
+criticism, teaching or review, to the extent the law allows.
+
+3. WHAT YOU MAY NOT DO
+Without the Owner's prior written permission you may not:
+  (a) copy, reproduce, republish or mirror EARTH or any substantial part of it;
+  (b) modify it or create derivative works, including ports, rewrites that
+      follow its structure or design, and re-skins;
+  (c) distribute, sublicense, sell, rent or lease it;
+  (d) deploy, host or publicly display it, or operate any website, app or
+      service built from it;
+  (e) use it, or any part of it, in a commercial product or service or in any
+      other project;
+  (f) remove or alter copyright, attribution or licence notices;
+  (g) use the name EARTH, the domain earth.sumitsuman.com, or its visual
+      identity in a way that suggests affiliation with or endorsement by the
+      Owner.
+
+4. GITHUB
+This repository is public on GitHub. GitHub's Terms of Service separately allow
+other GitHub users to view and fork public repositories on GitHub. That
+permission applies only within GitHub's functionality. It does not give you any
+right to use, copy elsewhere, run in public, or redistribute EARTH, and any
+fork remains subject to this license.
+
+5. THIRD-PARTY MATERIALS
+EARTH uses third-party software, data and imagery (for example Three.js,
+CesiumJS and GSAP; NASA GIBS imagery; and data from NASA GISS, NOAA, NSIDC,
+NASA FIRMS, Global Forest Watch and the IPCC). These are not owned by the Owner,
+are not covered by this license, and remain under their own licences and
+attribution requirements (see docs/ and the Sources panel of the site).
+Nothing in this license grants you any rights in them.
+
+6. NO WARRANTY
+EARTH IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. The
+data, visualisations and projections shown are for general information and
+education, not for scientific, safety, financial or legal decisions.
+
+7. LIMITATION OF LIABILITY
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE OWNER IS NOT LIABLE FOR ANY CLAIM
+OR DAMAGES ARISING FROM THE USE OF EARTH.
+
+8. TERMINATION
+Your permission under section 2 ends automatically if you breach this license.
+
+9. PERMISSIONS
+To ask for any permission not granted here, contact the Owner through
+https://sumitsuman.com.

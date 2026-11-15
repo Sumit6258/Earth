@@ -1,5 +1,7 @@
 # EARTH — Implementation Kickoff Brief
 
+> **Educational use only.** This repository is published so people can study how it is built. EARTH (earth.sumitsuman.com) is a **privately owned project of Sumit Suman**. The code, design, text and compiled site are © 2026 Sumit Suman, all rights reserved. No permission is given to copy, redistribute, deploy or commercialise any part of it; see [LICENSE](LICENSE). The run instructions below are written for the owner; anyone else may follow them only to study the project on their own computer.
+
 Version 1 · written 14 November 2026 · owner: Sumit Suman · production target: `earth.sumitsuman.com`
 
 **How to read the markers.** ✔ = checked against a live source on 14 Nov 2026 while writing this. ⚠ = believed correct but *not* verified; a named script or milestone settles it. ✘ = known unavailable. Nothing in this brief was run against an EARTH app, because none exists yet; what *was* executed is listed in §8.6.

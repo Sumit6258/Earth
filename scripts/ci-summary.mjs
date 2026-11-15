@@ -21,4 +21,8 @@ if (gc) {
     out.push('', '**Tile matrix sets:** ' + t.join(' · '));
   }
 } else out.push('', '_No GIBS catalog evidence was produced._');
+let tc = '';
+try { tc = fs.readFileSync('docs/evidence/M0/typecheck.log', 'utf8'); } catch { /* no log */ }
+const errs = tc.split('\n').filter((l) => /error TS/.test(l));
+if (errs.length) out.push('', `### Type-check errors (${errs.length})`, '', '```', ...errs.slice(0, 40), '```');
 console.log(out.join('\n'));
