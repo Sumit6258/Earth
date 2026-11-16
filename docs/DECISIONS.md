@@ -12,3 +12,4 @@ One entry per decision, newest first. Format: **D# — title** · date · decide
 | D6 | FIRMS sensors given the possible 2026-11-01 product cessation | open (default: NOAA-20/21 VIIRS, verify in M0) | |
 | D7 | Preview host | open | |
 | D8 | Serverless host for the FIRMS job | open (default: same vendor as D7) | |
+| D9 | Texture format: JPEG tiers in M1a, KTX2/Basis in M1b (staged so real imagery is on screen first; AC-03 stays red until KTX2) | decided 2026-11-15 (agent) | `scripts/textures/build-earth-textures.mjs` |

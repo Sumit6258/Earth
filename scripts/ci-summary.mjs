@@ -21,6 +21,22 @@ if (gc) {
     out.push('', '**Tile matrix sets:** ' + t.join(' · '));
   }
 } else out.push('', '_No GIBS catalog evidence was produced._');
+const m1 = read('docs/evidence/results-M1.json');
+if (m1) {
+  const rows = new Map(), fails = [];
+  const walk = (suite) => {
+    for (const sp of suite.specs ?? []) for (const t of sp.tests ?? []) {
+      const r = rows.get(sp.title) ?? {}; r[t.projectName] = t.status; rows.set(sp.title, r);
+      if (t.status === 'unexpected' && fails.length < 8) fails.push(`${sp.title} [${t.projectName}]: ${String(t.results?.[0]?.error?.message ?? '').replace(/\u001b\[[0-9;]*m/g, '').split('\n')[0].slice(0, 220)}`);
+    }
+    for (const c of suite.suites ?? []) walk(c);
+  };
+  for (const su of m1.suites ?? []) walk(su);
+  const mark = (x) => (x === 'expected' ? '✅' : x === 'skipped' ? '⏭' : x ? '❌' : '—');
+  out.push('', '### Acceptance M1 (informational)', '', '| test | desktop | mobile |', '|---|---|---|');
+  for (const [title, r] of rows) out.push(`| ${title.replace(/\|/g, '/')} | ${mark(r.desktop)} | ${mark(r.mobile)} |`);
+  if (fails.length) out.push('', '**First failures:**', '', '```', ...fails, '```');
+}
 let tc = '';
 try { tc = fs.readFileSync('docs/evidence/M0/typecheck.log', 'utf8'); } catch { /* no log */ }
 const errs = tc.split('\n').filter((l) => /error TS/.test(l));

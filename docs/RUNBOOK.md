@@ -30,6 +30,7 @@ CI renders WebGL in software: it proves things draw and work, not frame rate. Th
 
 ## Troubleshooting
 - **`deploy` fails at `actions/configure-pages` with "Get Pages site failed" / "Not Found".** Pages is not switched on yet. Repo → **Settings → Pages → Build and deployment → Source → GitHub Actions**. Then **Actions → the failed `deploy` run → Re-run all jobs**.
+- **`Build Earth textures from NASA GIBS` fails.** It downloads about 50 tiles from NASA at build time. Re-run the job; if it persists, paste the step log. The site never fakes a planet: without textures the page says so.
 - **`ci` is red.** Open the run, click the `gate` job, and read the **Summary** (it now lists type-check errors). Paste it into the chat.
 
 ## A public repo cannot stop copying

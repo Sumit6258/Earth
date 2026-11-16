@@ -30,7 +30,7 @@ export default defineConfig({
   reporter: [
     ['list'],
     ['html', { outputFolder: 'docs/evidence/playwright-report', open: 'never' }],
-    ['json', { outputFile: 'docs/evidence/results.json' }],
+    ['json', { outputFile: process.env.PW_JSON ?? 'docs/evidence/results.json' }],
   ],
   use: {
     baseURL: BASE,

@@ -32,6 +32,20 @@ jobs:
       - name: Install Chromium for Playwright
         run: npx playwright install --with-deps chromium
 
+      - name: Cache Earth textures
+        uses: actions/cache@v4
+        with:
+          path: |
+            public/textures
+            public/data/manifest.json
+            .cache/gibs-tiles
+          key: textures-${{ hashFiles('scripts/textures/build-earth-textures.mjs') }}
+
+      - name: Build Earth textures from NASA GIBS
+        id: textures
+        continue-on-error: true
+        run: npm run textures
+
       - name: Preflight (Gate 0)
         id: preflight
         continue-on-error: true
@@ -54,6 +68,13 @@ jobs:
         id: accept
         continue-on-error: true
         run: npm run accept:M0
+
+      - name: Acceptance M1 (informational, not in the gate yet)
+        id: m1
+        continue-on-error: true
+        env:
+          PW_JSON: docs/evidence/results-M1.json
+        run: npm run accept:M1
 
       - name: Evidence summary
         if: always()
@@ -84,6 +105,10 @@ jobs:
           AC: ${{ steps.accept.outcome }}
         run: |
           echo "preflight=$PF gibs=$GC types=$TY accept=$AC"
+          if [ "$TY" != success ]; then
+            echo "::group::type-check output (first 80 lines)"; head -n 80 docs/evidence/M0/typecheck.log || true; echo "::endgroup::"
+            grep -E "error" docs/evidence/M0/typecheck.log | head -n 40 | sed 's/^/TYPECHECK> /' || true
+          fi
           for o in "$PF" "$GC" "$TY" "$AC"; do
             [ "$o" = success ] || { echo "::error::M0 gate failed (preflight=$PF gibs=$GC types=$TY accept=$AC)"; exit 1; }
           done

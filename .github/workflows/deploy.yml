@@ -26,6 +26,16 @@ jobs:
       - name: Install dependencies
         run: |
           if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
+      - name: Cache Earth textures
+        uses: actions/cache@v4
+        with:
+          path: |
+            public/textures
+            public/data/manifest.json
+            .cache/gibs-tiles
+          key: textures-${{ hashFiles('scripts/textures/build-earth-textures.mjs') }}
+      - name: Build Earth textures from NASA GIBS
+        run: npm run textures
       - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

@@ -8,3 +8,6 @@ docs/evidence/M0/persistence-marker.json
 .env.*
 .DS_Store
 *.log
+public/textures/
+public/data/manifest.json
+.cache/
