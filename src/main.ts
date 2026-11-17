@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { EarthStage } from './render/three/EarthStage';
+import { subsolarPoint } from './geo/sky';
 
 type Tier = 'high' | 'balanced' | 'performance';
-const TIERS: Record<Tier, { tex: string[]; dpr: number; lonSeg: number; latSeg: number }> = {
-  high: { tex: ['1k', '4k'], dpr: 2, lonSeg: 192, latSeg: 96 },
-  balanced: { tex: ['1k', '2k'], dpr: 1.5, lonSeg: 128, latSeg: 64 },
-  performance: { tex: ['1k'], dpr: 1, lonSeg: 96, latSeg: 48 },
+const TIERS: Record<Tier, { tex: string[]; dpr: number; lonSeg: number; latSeg: number; atmoView: number; atmoLight: number }> = {
+  high: { tex: ['1k', '4k'], dpr: 2, lonSeg: 192, latSeg: 96, atmoView: 16, atmoLight: 6 },
+  balanced: { tex: ['1k', '2k'], dpr: 1.5, lonSeg: 128, latSeg: 64, atmoView: 10, atmoLight: 4 },
+  performance: { tex: ['1k'], dpr: 1, lonSeg: 96, latSeg: 48, atmoView: 8, atmoLight: 3 },
 };
 const TIME_RATE = 600; // simulated seconds per real second: a full day in 2.4 minutes
 
@@ -72,7 +73,7 @@ async function boot() {
   fillTable(manifest);
   if (!hasWebGL2()) return showFallback('This browser cannot run WebGL 2, so the 3D globe is unavailable. The data sources are listed below.');
   const t = TIERS[tier];
-  stage = new EarthStage($<HTMLCanvasElement>('#c'), { dpr: t.dpr, lonSeg: t.lonSeg, latSeg: t.latSeg, timeRate: reduced ? 0 : TIME_RATE });
+  stage = new EarthStage($<HTMLCanvasElement>('#c'), { dpr: t.dpr, lonSeg: t.lonSeg, latSeg: t.latSeg, timeRate: reduced ? 0 : TIME_RATE, atmoView: t.atmoView, atmoLight: t.atmoLight });
   const loader = new THREE.TextureLoader();
   let first = true;
   for (const size of t.tex) {
@@ -82,10 +83,29 @@ async function boot() {
       stage.start();
       await new Promise((r) => requestAnimationFrame(() => r(null)));
       const when = manifest[0]?.retrievedAt.slice(0, 10) ?? 'unknown date';
-      $('#status').textContent = `NASA GIBS imagery retrieved ${when} · Sun position is real, time runs ×${reduced ? 0 : TIME_RATE}`;
+      const night = manifest.find((x) => x.id.startsWith('earth_night_'));
+      $('#status').textContent = `NASA GIBS imagery retrieved ${when} · night lights: ${night ? night.layer : 'unavailable'} · Sun position is real, time runs ×${reduced ? 0 : TIME_RATE}`;
+      startClock();
       resolveReady();
     }
   }
+  if (manifest.some((x) => x.id.startsWith('earth_night_'))) {
+    for (const size of t.tex) {
+      try { stage.setNightMap(await loader.loadAsync(`textures/earth_night_${size}.jpg`)); } catch { break; }
+    }
+  }
+}
+
+/** Small observational readout: the simulated UTC instant and where the Sun is overhead. */
+function startClock() {
+  const el = $('#clock');
+  const tick = () => {
+    if (!stage) return;
+    const d = stage.simDate(), s = subsolarPoint(d);
+    el.textContent = `${d.toISOString().slice(0, 16).replace('T', ' ')} UTC · Sun overhead ${Math.abs(s.lat).toFixed(1)}°${s.lat < 0 ? 'S' : 'N'} ${Math.abs(s.lon).toFixed(1)}°${s.lon < 0 ? 'W' : 'E'}`;
+  };
+  tick();
+  setInterval(tick, 500);
 }
 
 boot().catch((e: unknown) => {

@@ -13,3 +13,5 @@ One entry per decision, newest first. Format: **D# — title** · date · decide
 | D7 | Preview host | open | |
 | D8 | Serverless host for the FIRMS job | open (default: same vendor as D7) | |
 | D9 | Texture format: JPEG tiers in M1a, KTX2/Basis in M1b (staged so real imagery is on screen first; AC-03 stays red until KTX2) | decided 2026-11-15 (agent) | `scripts/textures/build-earth-textures.mjs` |
+| D10 | Starfield is decorative and labelled as such until a real star catalogue is integrated | decided 2026-11-15 (agent) | `src/render/three/EarthStage.ts` |
+| D11 | Clouds (real MODIS-derived composite) and KTX2 compression are staged to M1c; no procedural clouds | decided 2026-11-15 (agent) | `docs/KICKOFF.md` §4.7 |

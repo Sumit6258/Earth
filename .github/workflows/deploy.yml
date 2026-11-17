@@ -33,7 +33,7 @@ jobs:
             public/textures
             public/data/manifest.json
             .cache/gibs-tiles
-          key: textures-${{ hashFiles('scripts/textures/build-earth-textures.mjs') }}
+          key: textures-${{ hashFiles('scripts/textures/*.mjs') }}
       - name: Build Earth textures from NASA GIBS
         run: npm run textures
       - run: npm run build

@@ -11,6 +11,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { curlDownload, curlText } from './lib/http.mjs';
 
 const BASE = 'https://gibs.earthdata.nasa.gov/wmts';
@@ -166,4 +167,4 @@ function selftest() {
   console.log('✔ gibs-catalog parser self-test passed (synthetic XML; real capabilities still need the M0 run)');
 }
 
-main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();

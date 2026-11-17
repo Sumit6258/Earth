@@ -16,6 +16,7 @@
     #status { margin: .5rem 0 0; max-width: 60ch; color: #9aa4ab; font-size: 11px; letter-spacing: .06em; }
     article { align-self: end; max-width: 46ch; color: #c3cace; }
     article p { margin: 0 0 .8rem; }
+    #clock { margin: .2rem 0 0; color: #c3cace; font-size: 11px; letter-spacing: .08em; }
     #nogl-fallback { align-self: center; max-width: 60ch; }
     details { pointer-events: auto; position: fixed; right: clamp(16px, 3vw, 40px); bottom: clamp(16px, 3vw, 40px); max-width: min(92vw, 720px); background: #000c; padding: .5rem .75rem; font-size: 11px; }
     summary { cursor: pointer; letter-spacing: .14em; text-transform: uppercase; color: #9aa4ab; }
@@ -30,13 +31,14 @@
     <header>
       <h1>EARTH</h1>
       <p id="status" data-testid="status">Loading NASA imagery…</p>
+      <p id="clock" data-testid="clock"></p>
     </header>
     <section id="nogl-fallback" data-testid="nogl-fallback" hidden>
       <p>The 3D globe needs WebGL 2. Everything this page is built from is listed under "Data sources".</p>
     </section>
     <footer>
       <article data-testid="chapter-text">
-        <p>The surface is NASA's Blue Marble imagery (shaded relief and bathymetry) from NASA GIBS, drawn on a WGS84 ellipsoid and lit by the Sun's real position for the simulated time.</p>
+        <p>The surface is NASA's Blue Marble imagery (shaded relief and bathymetry) from NASA GIBS, drawn on a WGS84 ellipsoid and lit by the Sun's real position for the simulated time. The atmosphere is computed, not painted. The starfield is decorative, not a star map.</p>
       </article>
       <p id="build" data-testid="build-info"></p>
       <p>© 2026 Sumit Suman. All rights reserved. Privately owned project; not open source.</p>

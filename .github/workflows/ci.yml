@@ -39,7 +39,7 @@ jobs:
             public/textures
             public/data/manifest.json
             .cache/gibs-tiles
-          key: textures-${{ hashFiles('scripts/textures/build-earth-textures.mjs') }}
+          key: textures-${{ hashFiles('scripts/textures/*.mjs') }}
 
       - name: Build Earth textures from NASA GIBS
         id: textures
@@ -75,6 +75,11 @@ jobs:
         env:
           PW_JSON: docs/evidence/results-M1.json
         run: npm run accept:M1
+
+      - name: Shader compile check (informational)
+        id: shaders
+        continue-on-error: true
+        run: node scripts/dev/compile-check.mjs
 
       - name: Evidence summary
         if: always()

@@ -1,50 +1,19 @@
 import * as THREE from 'three';
 import { WGS84_A, geodeticToEcef, ecefToThree, geodeticNormal } from '../../geo/ecef';
 import { sunDirectionEcef, subsolarPoint } from '../../geo/sky';
+import earthVert from './shaders/earth.vert.glsl?raw';
+import surfaceFrag from './shaders/surface.frag.glsl?raw';
+import atmosphereCore from './shaders/atmosphere.glsl?raw';
+import atmosphereMain from './shaders/atmosphere.frag.glsl?raw';
 
 const RAD = Math.PI / 180;
 
-export interface StageOptions { dpr: number; lonSeg: number; latSeg: number; timeRate: number }
+export interface StageOptions { dpr: number; lonSeg: number; latSeg: number; timeRate: number; atmoView: number; atmoLight: number }
 export interface Stats { running: boolean; frames: number; disposed: boolean; programs: number; programNames: string[]; shaderErrors: number; drawCalls: number }
 
-const VERT = /* glsl */ `
-varying vec2 vUv; varying vec3 vN; varying vec3 vW;
-void main() {
-  vUv = uv;
-  vN = normalize(mat3(modelMatrix) * normal);
-  vec4 w = modelMatrix * vec4(position, 1.0);
-  vW = w.xyz;
-  gl_Position = projectionMatrix * viewMatrix * w;
-}`;
-
-const SURFACE_FRAG = /* glsl */ `
-uniform sampler2D dayMap; uniform vec3 sunDir;
-varying vec2 vUv; varying vec3 vN; varying vec3 vW;
-void main() {
-  vec3 N = normalize(vN), V = normalize(cameraPosition - vW), S = normalize(sunDir);
-  vec3 albedo = texture2D(dayMap, vUv).rgb;
-  float d = dot(N, S);
-  float day = smoothstep(-0.06, 0.20, d);
-  vec3 twilight = mix(vec3(1.0), vec3(1.0, 0.72, 0.52), exp(-d * d * 40.0) * 0.5);
-  vec3 col = albedo * (0.02 + 1.05 * day) * twilight;
-  float fr = pow(1.0 - max(dot(N, V), 0.0), 3.0);
-  col += vec3(0.25, 0.50, 1.0) * fr * (0.08 + 0.92 * day) * 0.55;
-  gl_FragColor = vec4(col, 1.0);
-  #include <colorspace_fragment>
-}`;
-
-// Interim limb glow. M1b replaces it with Rayleigh + Mie single scattering.
-const ATMO_FRAG = /* glsl */ `
-uniform vec3 sunDir;
-varying vec2 vUv; varying vec3 vN; varying vec3 vW;
-void main() {
-  vec3 V = normalize(cameraPosition - vW);
-  float k = clamp(-dot(normalize(vN), V) * 2.6, 0.0, 1.0);
-  float a = pow(k, 2.4);
-  float lit = 0.10 + 0.90 * smoothstep(-0.25, 0.40, dot(normalize(vW), normalize(sunDir)));
-  vec3 c = mix(vec3(0.18, 0.40, 0.95), vec3(0.55, 0.78, 1.0), pow(k, 3.0));
-  gl_FragColor = vec4(c, a * lit);
-}`;
+const VERT = earthVert;
+const SURFACE_FRAG = surfaceFrag;
+const ATMO_FRAG = atmosphereCore + atmosphereMain; // physically based Rayleigh + Mie single scattering (see shaders/atmosphere.glsl)
 
 /** Earth mesh parameterised by GEODETIC lon/lat through the WGS84 ellipsoid, so it lines up with Cesium's globe and with GIBS' EPSG:4326 imagery. Unit = Earth equatorial radius. */
 export function buildEarthGeometry(lonSeg: number, latSeg: number): THREE.BufferGeometry {
@@ -88,6 +57,8 @@ export class EarthStage {
   private geometry: THREE.BufferGeometry;
   private atmoMat: THREE.ShaderMaterial;
   private map: THREE.Texture | null = null;
+  private nightMap: THREE.Texture | null = null;
+  private stars!: THREE.Points;
   private yaw: number;
   private pitch = 20 * RAD;
   private dist = 3.6;
@@ -101,17 +72,20 @@ export class EarthStage {
     this.renderer.debug.onShaderError = () => { this.shaderErrors++; console.error('EarthStage: a shader failed to compile'); };
 
     this.geometry = buildEarthGeometry(opts.lonSeg, opts.latSeg);
-    const uniforms = { dayMap: { value: null as THREE.Texture | null }, sunDir: { value: this.sun } };
+    const uniforms = { dayMap: { value: null as THREE.Texture | null }, nightMap: { value: null as THREE.Texture | null }, hasNight: { value: 0 }, sunDir: { value: this.sun } };
     this.surface = new THREE.ShaderMaterial({ name: 'surface-day-night', uniforms, vertexShader: VERT, fragmentShader: SURFACE_FRAG });
     this.atmoMat = new THREE.ShaderMaterial({
-      name: 'atmosphere-rim', uniforms: { sunDir: { value: this.sun } }, vertexShader: VERT, fragmentShader: ATMO_FRAG,
-      transparent: true, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending,
+      name: 'atmosphere-scattering', defines: { VS: opts.atmoView, LS: opts.atmoLight },
+      uniforms: { sunDir: { value: this.sun }, exposure: { value: 0.5 } }, vertexShader: VERT, fragmentShader: ATMO_FRAG,
+      transparent: true, depthWrite: false,
+      blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor, // premultiplied
     });
     const earth = new THREE.Mesh(this.geometry, this.surface);
     const atmo = new THREE.Mesh(this.geometry, this.atmoMat);
-    atmo.scale.setScalar(1.035);
+    atmo.scale.setScalar(1.01456); // top of atmosphere, +100 km (matches RA in atmosphere.glsl)
     atmo.renderOrder = 2;
     this.scene.add(earth, atmo);
+    this.addStars();
 
     this.yaw = (subsolarPoint(new Date()).lon - 35 + 90) * RAD; // open with the terminator in view
     this.bindInput();
@@ -128,12 +102,25 @@ export class EarthStage {
     this.map = tex;
   }
 
+  /** Optional night-side city lights. */
+  setNightMap(tex: THREE.Texture) {
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+    this.surface.uniforms.nightMap.value = tex;
+    this.surface.uniforms.hasNight.value = 1;
+    this.nightMap?.dispose();
+    this.nightMap = tex;
+  }
+
+  /** The simulated UTC instant being lit (real Sun position for this time). */
+  simDate(): Date { return new Date(this.baseMs + (performance.now() - this.t0) * this.opts.timeRate); }
+
   start() { this.running = true; this.renderer.setAnimationLoop(this.tick); }
   stop() { this.running = false; this.renderer.setAnimationLoop(null); }
 
   dispose() {
     this.stop();
-    this.map?.dispose(); this.geometry.dispose(); this.surface.dispose(); this.atmoMat.dispose(); this.renderer.dispose();
+    this.map?.dispose(); this.nightMap?.dispose(); this.stars.geometry.dispose(); (this.stars.material as THREE.Material).dispose(); this.geometry.dispose(); this.surface.dispose(); this.atmoMat.dispose(); this.renderer.dispose();
     this.disposed = true;
   }
 
@@ -147,8 +134,7 @@ export class EarthStage {
   }
 
   private tick = () => {
-    const simMs = this.baseMs + (performance.now() - this.t0) * this.opts.timeRate;
-    const s = ecefToThree(sunDirectionEcef(new Date(simMs)));
+    const s = ecefToThree(sunDirectionEcef(this.simDate()));
     this.sun.set(s[0], s[1], s[2]);
     const c = Math.cos(this.pitch);
     this.camera.position.set(this.dist * c * Math.sin(this.yaw), this.dist * Math.sin(this.pitch), this.dist * c * Math.cos(this.yaw));
@@ -156,6 +142,21 @@ export class EarthStage {
     this.renderer.render(this.scene, this.camera);
     this.frames++;
   };
+
+  /** Decorative starfield (deterministic pseudo-random): NOT a star map, and the site says so. */
+  private addStars() {
+    let seed = 1234567;
+    const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+    const n = 2200, pos = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const u = rnd() * 2 - 1, a = rnd() * 6.2832, r = Math.sqrt(1 - u * u);
+      pos.set([60 * r * Math.cos(a), 60 * u, 60 * r * Math.sin(a)], i * 3);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    this.stars = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xcfd8e6, size: 0.16, sizeAttenuation: true, transparent: true, opacity: 0.7, depthWrite: false }));
+    this.scene.add(this.stars);
+  }
 
   private resize() {
     const w = this.canvas.clientWidth || window.innerWidth, h = this.canvas.clientHeight || window.innerHeight;
