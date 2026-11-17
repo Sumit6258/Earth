@@ -37,6 +37,13 @@ if (m1) {
   for (const [title, r] of rows) out.push(`| ${title.replace(/\|/g, '/')} | ${mark(r.desktop)} | ${mark(r.mobile)} |`);
   if (fails.length) out.push('', '**First failures:**', '', '```', ...fails, '```');
 }
+const man = read('public/data/manifest.json');
+if (man) {
+  out.push('', '### Real data that made it into the build (from the manifest)', '', '| texture | layer | date | note |', '|---|---|---|---|');
+  for (const t of man.textures.filter((x) => x.id.endsWith('_1k'))) out.push(`| ${t.id.replace('_1k', '')} | ${String(t.layer).slice(0, 90)} | ${t.date ?? ''} | ${t.coveragePercent !== undefined ? `cloud coverage ${t.coveragePercent}%` : `${t.tiles} tiles`} |`);
+  const have = new Set(man.textures.map((x) => x.id.split('_').slice(0, 2).join('_')));
+  for (const k of ['earth_day', 'earth_night', 'earth_clouds']) if (!have.has(k)) out.push(`| ${k} | **unavailable** | | the site says so on the page |`);
+} else out.push('', '_No texture manifest was produced (the texture step failed)._');
 let tc = '';
 try { tc = fs.readFileSync('docs/evidence/M0/typecheck.log', 'utf8'); } catch { /* no log */ }
 const errs = tc.split('\n').filter((l) => /error TS/.test(l));

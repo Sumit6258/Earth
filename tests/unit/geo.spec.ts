@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { WGS84_A, geodeticToEcef, ecefToThree, geodeticNormal } from '../../src/geo/ecef';
 import { subsolarPoint, sunDirectionEcef } from '../../src/geo/sky';
+import { cloudAlpha } from '../../scripts/textures/build-clouds.mjs';
 
 test('U-01 ECEF: equator, pole, and the Three.js axis rotation @M1', () => {
   const [x, y, z] = geodeticToEcef(0, 0, 0);
@@ -22,4 +23,13 @@ test('U-02 the Sun: equinox, both solstices, and noon longitude are where astron
     expect(Math.abs(Math.abs(subsolarPoint(new Date(`${d}T00:00:00Z`)).lon) - 180)).toBeLessThan(5);
   }
   expect(Math.hypot(...sunDirectionEcef(new Date()))).toBeCloseTo(1, 12);
+});
+
+test('U-03 the cloud mask keeps white cloud, drops cyan snow, ocean and land @M1', () => {
+  expect(cloudAlpha(250, 250, 250)).toBeGreaterThan(240);      // thick cloud (white in bands 7-2-1)
+  expect(cloudAlpha(20, 245, 245)).toBeLessThan(5);            // snow and ice (cyan: low red)
+  expect(cloudAlpha(10, 30, 60)).toBe(0);                      // ocean
+  expect(cloudAlpha(120, 140, 70)).toBeLessThan(60);           // vegetation
+  expect(cloudAlpha(0, 0, 0)).toBe(0);                         // swath gap
+  expect(cloudAlpha(150, 155, 160)).toBeGreaterThan(cloudAlpha(120, 125, 130)); // monotonic: thin cloud is fainter
 });

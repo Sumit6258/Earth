@@ -93,6 +93,7 @@ jobs:
           rm -rf evidence-out/playwright-report evidence-out/M0/*.xml
           cp -r test-results evidence-out/test-results 2>/dev/null || true
           cp package-lock.json evidence-out/ 2>/dev/null || true
+          cp public/data/manifest.json evidence-out/manifest.json 2>/dev/null || true
 
       - uses: actions/upload-artifact@v4
         if: always()

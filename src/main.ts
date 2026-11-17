@@ -84,7 +84,8 @@ async function boot() {
       await new Promise((r) => requestAnimationFrame(() => r(null)));
       const when = manifest[0]?.retrievedAt.slice(0, 10) ?? 'unknown date';
       const night = manifest.find((x) => x.id.startsWith('earth_night_'));
-      $('#status').textContent = `NASA GIBS imagery retrieved ${when} · night lights: ${night ? night.layer : 'unavailable'} · Sun position is real, time runs ×${reduced ? 0 : TIME_RATE}`;
+      const clouds = manifest.find((x) => x.id.startsWith('earth_clouds_')) as (TextureEntry & { date?: string }) | undefined;
+      $('#status').textContent = `NASA GIBS imagery retrieved ${when} · night lights: ${night ? night.layer : 'unavailable'} · clouds: ${clouds ? `MODIS ${clouds.date}` : 'unavailable'} · Sun position is real, time runs ×${reduced ? 0 : TIME_RATE}`;
       startClock();
       resolveReady();
     }
@@ -93,6 +94,15 @@ async function boot() {
     for (const size of t.tex) {
       try { stage.setNightMap(await loader.loadAsync(`textures/earth_night_${size}.jpg`)); } catch { break; }
     }
+  }
+  await loadClouds(t, manifest);
+}
+
+async function loadClouds(t: (typeof TIERS)[Tier], manifest: TextureEntry[]) {
+  if (!stage || !manifest.some((x) => x.id.startsWith('earth_clouds_'))) return;
+  const loader = new THREE.TextureLoader();
+  for (const size of t.tex) {
+    try { stage.setCloudMap(await loader.loadAsync(`textures/earth_clouds_${size}.jpg`)); } catch { break; }
   }
 }
 

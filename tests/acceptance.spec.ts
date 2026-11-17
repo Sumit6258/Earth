@@ -351,7 +351,8 @@ test('AC-16 accessibility: axe clean, keyboard reachable, reduced motion honoure
   expect(motion.autoRotateRate).toBe(0);
   expect(motion.maxTransitionMs).toBeLessThanOrEqual(250);
   const { default: AxeBuilder } = await import('@axe-core/playwright');
-  const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).exclude('canvas').analyze();
+  // `as never`: axe resolves its own copy of playwright-core's Page type; the runtime object is identical.
+  const axe = await new AxeBuilder({ page: page as never }).withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).exclude('canvas').analyze();
   type AxeViolation = { id: string; impact?: string | null; nodes: unknown[] };
   expect((axe.violations as AxeViolation[]).filter((v) => v.impact === 'critical' || v.impact === 'serious').map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
   await page.keyboard.press('Tab');

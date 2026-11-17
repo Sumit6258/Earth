@@ -5,6 +5,7 @@ import earthVert from './shaders/earth.vert.glsl?raw';
 import surfaceFrag from './shaders/surface.frag.glsl?raw';
 import atmosphereCore from './shaders/atmosphere.glsl?raw';
 import atmosphereMain from './shaders/atmosphere.frag.glsl?raw';
+import cloudsFrag from './shaders/clouds.frag.glsl?raw';
 
 const RAD = Math.PI / 180;
 
@@ -58,6 +59,9 @@ export class EarthStage {
   private atmoMat: THREE.ShaderMaterial;
   private map: THREE.Texture | null = null;
   private nightMap: THREE.Texture | null = null;
+  private cloudMap: THREE.Texture | null = null;
+  private cloudMat: THREE.ShaderMaterial | null = null;
+  private clouds: THREE.Mesh | null = null;
   private stars!: THREE.Points;
   private yaw: number;
   private pitch = 20 * RAD;
@@ -112,6 +116,23 @@ export class EarthStage {
     this.nightMap = tex;
   }
 
+  /** Optional real, date-stamped cloud mask (alpha). Adds the cloud shell on first use. */
+  setCloudMap(tex: THREE.Texture) {
+    tex.colorSpace = THREE.NoColorSpace; // data, not colour
+    tex.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+    if (!this.cloudMat) {
+      this.cloudMat = new THREE.ShaderMaterial({ name: 'cloud-layer', uniforms: { cloudMap: { value: tex }, sunDir: { value: this.sun } }, vertexShader: VERT, fragmentShader: cloudsFrag, transparent: true, depthWrite: false });
+      this.clouds = new THREE.Mesh(this.geometry, this.cloudMat);
+      this.clouds.scale.setScalar(1.004);
+      this.clouds.renderOrder = 1;
+      this.scene.add(this.clouds);
+    } else {
+      this.cloudMat.uniforms.cloudMap.value = tex;
+    }
+    this.cloudMap?.dispose();
+    this.cloudMap = tex;
+  }
+
   /** The simulated UTC instant being lit (real Sun position for this time). */
   simDate(): Date { return new Date(this.baseMs + (performance.now() - this.t0) * this.opts.timeRate); }
 
@@ -120,7 +141,7 @@ export class EarthStage {
 
   dispose() {
     this.stop();
-    this.map?.dispose(); this.nightMap?.dispose(); this.stars.geometry.dispose(); (this.stars.material as THREE.Material).dispose(); this.geometry.dispose(); this.surface.dispose(); this.atmoMat.dispose(); this.renderer.dispose();
+    this.map?.dispose(); this.nightMap?.dispose(); this.cloudMap?.dispose(); this.cloudMat?.dispose(); this.stars.geometry.dispose(); (this.stars.material as THREE.Material).dispose(); this.geometry.dispose(); this.surface.dispose(); this.atmoMat.dispose(); this.renderer.dispose();
     this.disposed = true;
   }
 
@@ -134,7 +155,9 @@ export class EarthStage {
   }
 
   private tick = () => {
-    const s = ecefToThree(sunDirectionEcef(this.simDate()));
+    const sim = this.simDate();
+    const s = ecefToThree(sunDirectionEcef(sim));
+    if (this.clouds) this.clouds.rotation.y = -((sim.getTime() - this.baseMs) / 1000) * 1.5e-6; // illustrative drift against the ground
     this.sun.set(s[0], s[1], s[2]);
     const c = Math.cos(this.pitch);
     this.camera.position.set(this.dist * c * Math.sin(this.yaw), this.dist * Math.sin(this.pitch), this.dist * c * Math.cos(this.yaw));

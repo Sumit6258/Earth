@@ -7,6 +7,7 @@ const vertPrefix = '#version 300 es\nprecision highp float;\nprecision highp int
 const fragPrefix = '#version 300 es\nprecision highp float;\nprecision highp int;\nuniform mat4 viewMatrix; uniform vec3 cameraPosition;\n#define varying in\nlayout(location = 0) out highp vec4 pc_fragColor;\n#define gl_FragColor pc_fragColor\n#define texture2D texture\n';
 const programs = {
   'surface (day/night + city lights)': [vertPrefix + read('earth.vert.glsl'), fragPrefix + read('surface.frag.glsl').replace('#include <colorspace_fragment>', '')],
+  'clouds (real MODIS mask, sun-lit)': [vertPrefix + read('earth.vert.glsl'), fragPrefix + read('clouds.frag.glsl').replace('#include <colorspace_fragment>', '')],
   'atmosphere (Rayleigh+Mie, high tier VS16/LS6)': [vertPrefix + read('earth.vert.glsl'), fragPrefix + '#define VS 16\n#define LS 6\n' + read('atmosphere.glsl') + read('atmosphere.frag.glsl')],
   'atmosphere (performance tier VS8/LS3)': [vertPrefix + read('earth.vert.glsl'), fragPrefix + '#define VS 8\n#define LS 3\n' + read('atmosphere.glsl') + read('atmosphere.frag.glsl')],
 };
