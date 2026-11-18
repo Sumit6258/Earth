@@ -42,7 +42,7 @@ if (man) {
   out.push('', '### Real data that made it into the build (from the manifest)', '', '| texture | layer | date | note |', '|---|---|---|---|');
   for (const t of man.textures.filter((x) => x.id.endsWith('_1k'))) out.push(`| ${t.id.replace('_1k', '')} | ${String(t.layer).slice(0, 90)} | ${t.date ?? ''} | ${t.coveragePercent !== undefined ? `cloud coverage ${t.coveragePercent}%` : `${t.tiles} tiles`} |`);
   const have = new Set(man.textures.map((x) => x.id.split('_').slice(0, 2).join('_')));
-  for (const k of ['earth_day', 'earth_night', 'earth_clouds']) if (!have.has(k)) out.push(`| ${k} | **unavailable** | | the site says so on the page |`);
+  for (const k of ['earth_day', 'earth_night', 'earth_clouds']) if (!have.has(k)) out.push(`| ${k} | **unavailable** | | ${String(man.unavailable?.[k.split('_')[1]] ?? 'no reason recorded').replace(/\|/g, '/').slice(0, 200)} |`);
 } else out.push('', '_No texture manifest was produced (the texture step failed)._');
 let tc = '';
 try { tc = fs.readFileSync('docs/evidence/M0/typecheck.log', 'utf8'); } catch { /* no log */ }

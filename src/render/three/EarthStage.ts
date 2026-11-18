@@ -80,7 +80,7 @@ export class EarthStage {
     this.surface = new THREE.ShaderMaterial({ name: 'surface-day-night', uniforms, vertexShader: VERT, fragmentShader: SURFACE_FRAG });
     this.atmoMat = new THREE.ShaderMaterial({
       name: 'atmosphere-scattering', defines: { VS: opts.atmoView, LS: opts.atmoLight },
-      uniforms: { sunDir: { value: this.sun }, exposure: { value: 0.5 } }, vertexShader: VERT, fragmentShader: ATMO_FRAG,
+      uniforms: { sunDir: { value: this.sun }, exposure: { value: 0.8 } }, vertexShader: VERT, fragmentShader: ATMO_FRAG,
       transparent: true, depthWrite: false,
       blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor, // premultiplied
     });

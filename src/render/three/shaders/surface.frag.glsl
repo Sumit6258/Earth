@@ -6,7 +6,7 @@ void main() {
   float d = dot(N, S);
   float day = smoothstep(-0.06, 0.20, d);
   vec3 twilight = mix(vec3(1.0), vec3(1.0, 0.72, 0.52), exp(-d * d * 40.0) * 0.5);
-  vec3 col = albedo * (0.02 + 1.05 * day) * twilight;
+  vec3 col = albedo * (0.045 + 1.05 * day) * twilight;
   if (hasNight > 0.5) {
     vec3 nl = texture2D(nightMap, vUv).rgb;
     float l = dot(nl, vec3(0.299, 0.587, 0.114));

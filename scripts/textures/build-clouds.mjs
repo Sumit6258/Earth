@@ -12,10 +12,11 @@ import crypto from 'node:crypto';
 import sharp from 'sharp';
 import { curlDownload } from '../lib/http.mjs';
 import { parseCapabilities } from '../gibs-catalog.mjs';
+import { readManifest, writeManifest, markUnavailable, clearUnavailable } from '../lib/manifest.mjs';
 
 const BASE = 'https://gibs.earthdata.nasa.gov/wmts/epsg4326/best';
 const LEVEL = 3, TILE = 512, COLS = 10, ROWS = 5, W = COLS * TILE, H = ROWS * TILE;
-const CACHE = '.cache/gibs-tiles', OUT = 'public/textures', MANIFEST = 'public/data/manifest.json';
+const CACHE = '.cache/gibs-tiles', OUT = 'public/textures';
 const TIERS = [['4k', 4096, 2048], ['2k', 2048, 1024], ['1k', 1024, 512]];
 const DAYS_BACK = [1, 2]; // the newest day is often incomplete
 
@@ -25,7 +26,7 @@ export const cloudAlpha = (r, g, b) => { // 0..255: white = cloud; cyan snow has
 };
 
 async function main() {
-  const m0 = (() => { try { return JSON.parse(fs.readFileSync(MANIFEST, 'utf8')); } catch { return null; } })();
+  const m0 = readManifest();
   if (!m0) throw new Error('build the day textures first (manifest missing)');
   if (!process.env.FORCE && m0.textures.some((t) => t.id.startsWith('earth_clouds_')) && TIERS.every(([id]) => fs.existsSync(`${OUT}/earth_clouds_${id}.jpg`))) {
     console.log('cloud textures already built (set FORCE=1 to rebuild)');
@@ -33,18 +34,27 @@ async function main() {
   }
   fs.mkdirSync(CACHE, { recursive: true });
   const capFile = path.join(CACHE, 'gibs-4326-capabilities.xml');
-  if (!fs.existsSync(capFile) && !curlDownload(`${BASE}/1.0.0/WMTSCapabilities.xml`, capFile, { timeout: 180 }).ok) { console.warn('capabilities download failed; continuing without clouds'); return; }
-  const cap = parseCapabilities(fs.readFileSync(capFile, 'utf8'));
-  const usable = (i) => cap.layers[i]?.template && cap.layers[i].time?.default && cap.layers[i].tileMatrixSets.some((t) => (cap.tileMatrixSets[t]?.levels ?? 0) > LEVEL);
-  const ids = Object.keys(cap.layers).filter((i) => /^MODIS_(Terra|Aqua)_CorrectedReflectance_Bands721$/.test(i) && usable(i));
-  if (!ids.length) { console.warn('no MODIS Bands721 layer found in the live capabilities; continuing without clouds'); return; }
+  let cap = { layers: {}, tileMatrixSets: {} };
+  if (!fs.existsSync(capFile)) curlDownload(`${BASE}/1.0.0/WMTSCapabilities.xml`, capFile, { timeout: 180 });
+  if (fs.existsSync(capFile)) cap = parseCapabilities(fs.readFileSync(capFile, 'utf8'));
+  const levelsOf = (t) => cap.tileMatrixSets[t]?.levels ?? 99; // unknown = assume deep enough
+  const usable = (i) => cap.layers[i]?.template && cap.layers[i].time?.default && cap.layers[i].tileMatrixSets.some((t) => levelsOf(t) > LEVEL);
+  let ids = Object.keys(cap.layers).filter((i) => /^MODIS_(Terra|Aqua)_CorrectedReflectance_Bands721$/.test(i) && usable(i));
+  if (!ids.length) {
+    // Capabilities unavailable or unhelpful: fall back to GIBS' documented URL pattern with today's UTC date.
+    for (const id of ['MODIS_Terra_CorrectedReflectance_Bands721', 'MODIS_Aqua_CorrectedReflectance_Bands721']) {
+      cap.layers[id] = { id, tileMatrixSets: ['250m'], time: { default: new Date().toISOString().slice(0, 10) }, template: `${BASE}/${id}/default/{Time}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}.jpg` };
+    }
+    ids = Object.keys(cap.layers).filter((i) => /Bands721$/.test(i));
+    console.warn(`capabilities gave ${Object.keys(cap.layers).length - 2} layers and no usable Bands721 layer; trying the documented URL pattern instead`);
+  }
 
   const alpha = new Uint8Array(W * H);
   const used = [], dates = new Set();
   let tiles = 0, missing = 0;
   for (const id of ids) {
     const L = cap.layers[id];
-    const tms = ['250m', '500m', '1km', '2km'].find((t) => L.tileMatrixSets.includes(t) && (cap.tileMatrixSets[t]?.levels ?? 0) > LEVEL) ?? L.tileMatrixSets[0];
+    const tms = ['250m', '500m', '1km', '2km'].find((t) => L.tileMatrixSets.includes(t) && levelsOf(t) > LEVEL) ?? L.tileMatrixSets[0];
     const ext = ((/\.(png|jpe?g)$/i.exec(L.template) ?? [])[1] ?? 'jpg').toLowerCase().replace('jpeg', 'jpg');
     for (const back of DAYS_BACK) {
       const day = new Date(Date.parse(`${L.time.default.slice(0, 10)}T00:00:00Z`) - back * 86400000).toISOString().slice(0, 10);
@@ -71,7 +81,7 @@ async function main() {
   }
   const coverage = alpha.reduce((s, v) => s + v, 0) / (255 * alpha.length);
   if (!used.length || missing > tiles * 0.5 || coverage < 0.03 || coverage > 0.9) {
-    console.warn(`cloud mask rejected (used ${used.length} layer-days, ${missing}/${tiles} tiles missing, coverage ${(coverage * 100).toFixed(1)}%); continuing without clouds`);
+    markUnavailable('clouds', `cloud mask rejected: ${used.length} layer-days usable, ${missing}/${tiles} tiles missing, coverage ${(coverage * 100).toFixed(1)}%`);
     return;
   }
 
@@ -89,7 +99,7 @@ async function main() {
       coveragePercent: Math.round(coverage * 1000) / 10, sha256: crypto.createHash('sha256').update(buf).digest('hex'), bytes: buf.length,
     });
   }
-  fs.writeFileSync(MANIFEST, JSON.stringify({ ...m0, textures: [...m0.textures.filter((t) => !t.id.startsWith('earth_clouds_')), ...entries] }, null, 2));
+  writeManifest(clearUnavailable({ ...m0, textures: [...m0.textures.filter((t) => !t.id.startsWith('earth_clouds_')), ...entries] }, 'clouds'));
   console.log(`built ${entries.length} cloud textures from ${used.join(', ')} (cloud coverage ${(coverage * 100).toFixed(1)}%, ${missing}/${tiles} tiles missing)`);
 }
 

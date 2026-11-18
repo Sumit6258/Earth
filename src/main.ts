@@ -10,6 +10,7 @@ const TIERS: Record<Tier, { tex: string[]; dpr: number; lonSeg: number; latSeg: 
 };
 const TIME_RATE = 600; // simulated seconds per real second: a full day in 2.4 minutes
 
+interface Manifest { textures: TextureEntry[]; unavailable?: Record<string, string> }
 interface TextureEntry { id: string; file: string; source: string; layer: string; retrievedAt: string; license: string; attribution: string }
 
 const params = new URLSearchParams(location.search);
@@ -41,10 +42,10 @@ function hasWebGL2(): boolean {
   try { return !!document.createElement('canvas').getContext('webgl2'); } catch { return false; }
 }
 
-async function loadManifest(): Promise<TextureEntry[]> {
+async function loadManifest(): Promise<Manifest> {
   const r = await fetch('data/manifest.json');
   if (!r.ok) throw new Error(`manifest HTTP ${r.status}`);
-  return ((await r.json()) as { textures: TextureEntry[] }).textures;
+  return (await r.json()) as Manifest;
 }
 
 function fillTable(rows: TextureEntry[]) {
@@ -69,7 +70,8 @@ function showFallback(reason: string) {
 }
 
 async function boot() {
-  const manifest = await loadManifest().catch(() => [] as TextureEntry[]);
+  const mf = await loadManifest().catch(() => ({ textures: [] }) as Manifest);
+  const manifest = mf.textures;
   fillTable(manifest);
   if (!hasWebGL2()) return showFallback('This browser cannot run WebGL 2, so the 3D globe is unavailable. The data sources are listed below.');
   const t = TIERS[tier];
@@ -85,7 +87,7 @@ async function boot() {
       const when = manifest[0]?.retrievedAt.slice(0, 10) ?? 'unknown date';
       const night = manifest.find((x) => x.id.startsWith('earth_night_'));
       const clouds = manifest.find((x) => x.id.startsWith('earth_clouds_')) as (TextureEntry & { date?: string }) | undefined;
-      $('#status').textContent = `NASA GIBS imagery retrieved ${when} · night lights: ${night ? night.layer : 'unavailable'} · clouds: ${clouds ? `MODIS ${clouds.date}` : 'unavailable'} · Sun position is real, time runs ×${reduced ? 0 : TIME_RATE}`;
+      $('#status').textContent = `NASA GIBS imagery retrieved ${when} · night lights: ${night ? night.layer : `unavailable (${mf.unavailable?.night ?? 'not built'})`} · clouds: ${clouds ? `MODIS ${clouds.date}` : `unavailable (${mf.unavailable?.clouds ?? 'not built'})`} · Sun position is real, time runs ×${reduced ? 0 : TIME_RATE}`;
       startClock();
       resolveReady();
     }

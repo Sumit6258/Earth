@@ -9,14 +9,15 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import sharp from 'sharp';
 import { curlDownload } from '../lib/http.mjs';
-import { parseCapabilities, SHORTLIST, DISCOVER } from '../gibs-catalog.mjs';
+import { parseCapabilities, SHORTLIST } from '../gibs-catalog.mjs';
+import { readManifest, writeManifest, markUnavailable, clearUnavailable } from '../lib/manifest.mjs';
 
 const BASE = 'https://gibs.earthdata.nasa.gov/wmts/epsg4326/best';
 const LEVEL = 3, TILE = 512, COLS = 10, ROWS = 5; // same grid as the day texture
-const CACHE = '.cache/gibs-tiles', OUT = 'public/textures', MANIFEST = 'public/data/manifest.json';
+const CACHE = '.cache/gibs-tiles', OUT = 'public/textures';
 const TIERS = [['4k', 4096, 2048], ['2k', 2048, 1024], ['1k', 1024, 512]];
 
-const m0 = (() => { try { return JSON.parse(fs.readFileSync(MANIFEST, 'utf8')); } catch { return null; } })();
+const m0 = readManifest();
 if (!m0) throw new Error('build the day textures first (manifest missing)');
 if (!process.env.FORCE && m0.textures.some((t) => t.id.startsWith('earth_night_')) && TIERS.every(([id]) => fs.existsSync(`${OUT}/earth_night_${id}.jpg`))) {
   console.log('night textures already built (set FORCE=1 to rebuild)');
@@ -27,16 +28,19 @@ fs.mkdirSync(CACHE, { recursive: true });
 const capFile = path.join(CACHE, 'gibs-4326-capabilities.xml');
 if (!fs.existsSync(capFile)) {
   const d = curlDownload(`${BASE}/1.0.0/WMTSCapabilities.xml`, capFile, { timeout: 180 });
-  if (!d.ok) { console.warn(`capabilities download failed (${d.error}); continuing without night lights`); process.exit(0); }
+  if (!d.ok) { markUnavailable('night', `capabilities download failed: ${d.error}`); process.exit(0); }
 }
 const cap = parseCapabilities(fs.readFileSync(capFile, 'utf8'));
-const usable = (i) => cap.layers[i]?.template && cap.layers[i].tileMatrixSets.some((t) => (cap.tileMatrixSets[t]?.levels ?? 0) > LEVEL);
-const candidates = [...new Set([...SHORTLIST.night, ...Object.keys(cap.layers).filter((i) => DISCOVER.night.test(i))])];
+const nLayers = Object.keys(cap.layers).length;
+if (!nLayers) { markUnavailable('night', 'the GIBS capabilities parsed to 0 layers (format changed?)'); process.exit(0); }
+const levelsOf = (t) => cap.tileMatrixSets[t]?.levels ?? 99; // unknown = assume deep enough
+const usable = (i) => cap.layers[i]?.template && cap.layers[i].tileMatrixSets.some((t) => levelsOf(t) > LEVEL);
+const candidates = [...new Set([...SHORTLIST.night, ...Object.keys(cap.layers).filter((i) => /black.?marble|night|dnb/i.test(i))])];
 const id = candidates.find(usable);
-if (!id) { console.warn(`no usable night-lights layer among: ${candidates.join(', ') || '(none)'}; continuing without night lights`); process.exit(0); }
+if (!id) { markUnavailable('night', `no usable night-lights layer among ${candidates.length} candidates (${candidates.slice(0, 5).join(', ') || 'none'}) in ${nLayers} layers`); process.exit(0); }
 
 const L = cap.layers[id];
-const tms = ['500m', '1km', '2km'].find((t) => L.tileMatrixSets.includes(t) && (cap.tileMatrixSets[t]?.levels ?? 0) > LEVEL) ?? L.tileMatrixSets.find((t) => (cap.tileMatrixSets[t]?.levels ?? 0) > LEVEL);
+const tms = ['500m', '1km', '2km'].find((t) => L.tileMatrixSets.includes(t) && levelsOf(t) > LEVEL) ?? L.tileMatrixSets.find((t) => levelsOf(t) > LEVEL);
 const time = L.time?.default;
 const ext = ((/\.(png|jpe?g)$/i.exec(L.template) ?? [])[1] ?? 'png').toLowerCase().replace('jpeg', 'jpg');
 console.log(`night layer: ${id} (${tms}, ${time ?? 'no time dimension'}, .${ext})`);
@@ -57,7 +61,7 @@ for (let row = 0; row < ROWS; row++) {
     } catch { fs.rmSync(file, { force: true }); missing++; }
   }
 }
-if (missing > ROWS * COLS * 0.6) { console.warn(`${missing}/${ROWS * COLS} tiles unavailable for ${id}; continuing without night lights`); process.exit(0); }
+if (missing > ROWS * COLS * 0.6) { markUnavailable('night', `${missing}/${ROWS * COLS} tiles of ${id} could not be fetched`); process.exit(0); }
 
 const mosaic = await sharp({ create: { width: COLS * TILE, height: ROWS * TILE, channels: 3, background: '#000000' } }).composite(composites).png().toBuffer();
 const now = new Date().toISOString();
@@ -75,5 +79,5 @@ for (const [tier, w, h] of TIERS) {
     sha256: crypto.createHash('sha256').update(buf).digest('hex'), bytes: buf.length,
   });
 }
-fs.writeFileSync(MANIFEST, JSON.stringify({ ...m0, textures: [...m0.textures.filter((t) => !t.id.startsWith('earth_night_')), ...entries] }, null, 2));
+writeManifest(clearUnavailable({ ...m0, textures: [...m0.textures.filter((t) => !t.id.startsWith('earth_night_')), ...entries] }, 'night'));
 console.log(`built ${entries.length} night textures from ${id} (${ROWS * COLS - missing}/${ROWS * COLS} tiles)`);
