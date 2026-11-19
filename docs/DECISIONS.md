@@ -5,7 +5,7 @@ One entry per decision, newest first. Format: **D# — title** · date · decide
 | # | Decision | Status | Evidence |
 |---|---|---|---|
 | D1 | UI layer: vanilla TypeScript vs React | open (default: vanilla) | |
-| D2 | GIBS projection per use: EPSG:4326 custom tiling scheme vs EPSG:3857 | open (M0 spike decides) | `docs/evidence/M0/` |
+| D2 | GIBS projection per use: EPSG:4326 custom tiling scheme vs EPSG:3857 | in test: `cesium.html` uses the 4326 scheme; test S-02 proves or refutes the tile-bounds alignment | `tests/spike/cesium.spec.ts` |
 | D3 | SSP1-1.9 regional grids: pattern-scaled vs SSP1-2.6 grid with SSP1-1.9 global numbers | open (default: pattern-scaled, labelled) | |
 | D4 | Cloud texture source | open (default: dated MODIS Terra+Aqua composite) | |
 | D5 | Terrain: Cesium ion token or none | open (default: none until M3 needs it) | |

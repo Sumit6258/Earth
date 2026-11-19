@@ -11,3 +11,4 @@ docs/evidence/M0/persistence-marker.json
 public/textures/
 public/data/manifest.json
 .cache/
+public/cesium/

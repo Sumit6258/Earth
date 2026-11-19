@@ -69,12 +69,12 @@ jobs:
         continue-on-error: true
         run: npm run accept:M0
 
-      - name: Acceptance M1 (informational, not in the gate yet)
+      - name: Acceptance M1 + M2 (informational, not in the gate yet)
         id: m1
         continue-on-error: true
         env:
           PW_JSON: docs/evidence/results-M1.json
-        run: npm run accept:M1
+        run: npm run accept:M2
 
       - name: Shader compile check (informational)
         id: shaders

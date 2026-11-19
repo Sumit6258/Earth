@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { WGS84_A, geodeticToEcef, ecefToThree, geodeticNormal } from '../../src/geo/ecef';
 import { subsolarPoint, sunDirectionEcef } from '../../src/geo/sky';
 import { cloudAlpha } from '../../scripts/textures/build-clouds.mjs';
+import { gibsTileBounds, gibsUrl } from '../../src/geo/gibs';
 
 test('U-01 ECEF: equator, pole, and the Three.js axis rotation @M1', () => {
   const [x, y, z] = geodeticToEcef(0, 0, 0);
@@ -32,4 +33,12 @@ test('U-03 the cloud mask keeps white cloud, drops cyan snow, ocean and land @M1
   expect(cloudAlpha(120, 140, 70)).toBeLessThan(60);           // vegetation
   expect(cloudAlpha(0, 0, 0)).toBe(0);                         // swath gap
   expect(cloudAlpha(150, 155, 160)).toBeGreaterThan(cloudAlpha(120, 125, 130)); // monotonic: thin cloud is fainter
+});
+
+test('U-04 GIBS EPSG:4326 tile grid: level 0 is 288 degrees, level 3 tiles the world in 10 x 5 @M1', () => {
+  expect(gibsTileBounds(0, 0, 0)).toEqual({ west: -180, east: 108, north: 90, south: -198 });
+  const first = gibsTileBounds(3, 0, 0), last = gibsTileBounds(3, 9, 4);
+  expect([first.west, first.north, last.east, last.south]).toEqual([-180, 90, 180, -90]); // exactly the world
+  expect(gibsUrl('X', 'jpeg')).toBe('https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/X/default/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}.jpeg');
+  expect(gibsUrl('X', 'jpg', '2023-07-01')).toContain('/default/2023-07-01/{TileMatrixSet}');
 });

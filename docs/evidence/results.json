@@ -1,0 +1,236 @@
+{
+  "config": {
+    "argv": [
+      "/usr/bin/node",
+      "/home/claude/.npm-global/bin/playwright",
+      "test",
+      "tests/spike",
+      "--list"
+    ],
+    "configFile": "/home/claude/kit/playwright.config.ts",
+    "rootDir": "/home/claude/kit/tests",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {},
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/home/claude/kit/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "desktop",
+        "name": "desktop",
+        "testDir": "/home/claude/kit/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 180000
+      },
+      {
+        "outputDir": "/home/claude/kit/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "mobile",
+        "name": "mobile",
+        "testDir": "/home/claude/kit/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 180000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "html",
+        {
+          "outputFolder": "docs/evidence/playwright-report",
+          "open": "never"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "docs/evidence/results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "spike/cesium.spec.ts",
+      "file": "spike/cesium.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "S-01 Cesium draws real NASA GIBS imagery on a WGS84 globe, loaded lazily @M2",
+          "ok": true,
+          "tags": [
+            "M2"
+          ],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "00292d4130df75c791bf-aa8c842f6377b2956b68",
+          "file": "spike/cesium.spec.ts",
+          "line": 15,
+          "column": 1
+        },
+        {
+          "title": "S-02 Cesium tiling scheme reproduces GIBS EPSG:4326 tile bounds for levels 0 to 8 @M2",
+          "ok": true,
+          "tags": [
+            "M2"
+          ],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "00292d4130df75c791bf-f20a63eca57af796b762",
+          "file": "spike/cesium.spec.ts",
+          "line": 30,
+          "column": 1
+        },
+        {
+          "title": "S-03 the date control requests exactly that day of MODIS imagery @M2",
+          "ok": true,
+          "tags": [
+            "M2"
+          ],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "00292d4130df75c791bf-a7b6837f265423c190ca",
+          "file": "spike/cesium.spec.ts",
+          "line": 41,
+          "column": 1
+        },
+        {
+          "title": "S-01 Cesium draws real NASA GIBS imagery on a WGS84 globe, loaded lazily @M2",
+          "ok": true,
+          "tags": [
+            "M2"
+          ],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "00292d4130df75c791bf-a6a9c563bb1ca8d36acf",
+          "file": "spike/cesium.spec.ts",
+          "line": 15,
+          "column": 1
+        },
+        {
+          "title": "S-02 Cesium tiling scheme reproduces GIBS EPSG:4326 tile bounds for levels 0 to 8 @M2",
+          "ok": true,
+          "tags": [
+            "M2"
+          ],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "00292d4130df75c791bf-4cf3d66d5dad2c3bab76",
+          "file": "spike/cesium.spec.ts",
+          "line": 30,
+          "column": 1
+        },
+        {
+          "title": "S-03 the date control requests exactly that day of MODIS imagery @M2",
+          "ok": true,
+          "tags": [
+            "M2"
+          ],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [],
+              "status": "skipped"
+            }
+          ],
+          "id": "00292d4130df75c791bf-a90db43e0d9c8dc03d7a",
+          "file": "spike/cesium.spec.ts",
+          "line": 41,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-11-19T01:35:09.555Z",
+    "duration": 152.24800000000005,
+    "expected": 0,
+    "skipped": 6,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

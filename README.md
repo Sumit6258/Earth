@@ -7,4 +7,5 @@ An interactive, data-driven Earth for `earth.sumitsuman.com`. Status: **M1c (rea
 - How to run and deploy it (owner): [`docs/RUNBOOK.md`](docs/RUNBOOK.md)
 - The full plan, decisions and acceptance rules: [`docs/KICKOFF.md`](docs/KICKOFF.md)
 - Honest progress ledger: [`docs/STATUS.md`](docs/STATUS.md)
+- Zoomable real imagery (Cesium preview): `/cesium.html`
 - License: [`LICENSE`](LICENSE) (all rights reserved)
