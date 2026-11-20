@@ -12,7 +12,7 @@ import sharp from 'sharp';
 import { curlDownload } from '../lib/http.mjs';
 
 const LAYER = 'BlueMarble_ShadedRelief_Bathymetry', TMS = '500m', LEVEL = 3;
-const BASE = 'https://gibs.earthdata.nasa.gov/wmts/epsg4326/best';
+const BASE = process.env.GIBS_BASE ?? 'https://gibs.earthdata.nasa.gov/wmts/epsg4326/best';
 const TILE = 512, SPAN = 288 / 2 ** LEVEL; // an EPSG:4326 level-0 tile spans 288 degrees
 const COLS = Math.round(360 / SPAN), ROWS = Math.round(180 / SPAN);
 if (COLS * SPAN !== 360 || ROWS * SPAN !== 180) throw new Error(`level ${LEVEL} does not tile the world exactly`);

@@ -11,7 +11,12 @@ export default defineConfig({
     target: 'es2022',
     sourcemap: true,
     chunkSizeWarningLimit: 6000, // the lazily loaded Cesium chunk is large by nature
-    rollupOptions: { input: { main: fileURLToPath(new URL('./index.html', import.meta.url)), cesium: fileURLToPath(new URL('./cesium.html', import.meta.url)) } },
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL('./index.html', import.meta.url)),
+        ...(process.env.SKIP_CESIUM === '1' ? {} : { cesium: fileURLToPath(new URL('./cesium.html', import.meta.url)) }),
+      },
+    },
   },
   server: { host: '127.0.0.1' },
   preview: { host: '127.0.0.1', port: 4173, strictPort: true },

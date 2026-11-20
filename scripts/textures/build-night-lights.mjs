@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
- * Night-side city lights from NASA GIBS (the Black Marble family). The layer id is DISCOVERED from the live
- * capabilities, never assumed, and its own ResourceURL template is used to fetch tiles.
- * Fail-soft by design: no usable layer means no night texture, and the site says "night lights: unavailable".
+ * Night-side city lights from NASA GIBS (Black Marble family).
+ * The layer id comes from the live catalog (ids parse reliably); the tile URL variant (grid, extension, date) is found by
+ * asking the tile server, so it does not depend on parsing the catalog's URL templates.
+ * Fail-soft with a recorded reason: no night texture means the site says "night lights: unavailable (why)".
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -10,10 +11,14 @@ import crypto from 'node:crypto';
 import sharp from 'sharp';
 import { curlDownload } from '../lib/http.mjs';
 import { parseCapabilities, SHORTLIST } from '../gibs-catalog.mjs';
+import { BASE, tileUrl, probeLayer } from '../lib/gibs-probe.mjs';
 import { readManifest, writeManifest, markUnavailable, clearUnavailable } from '../lib/manifest.mjs';
 
-const BASE = 'https://gibs.earthdata.nasa.gov/wmts/epsg4326/best';
-const LEVEL = 3, TILE = 512, COLS = 10, ROWS = 5; // same grid as the day texture
+for (const ev of ['uncaughtException', 'unhandledRejection']) {
+  process.on(ev, (e) => { markUnavailable('night', `script error: ${e?.message ?? e}`); process.exit(0); });
+}
+
+const LEVEL = 3, TILE = 512, COLS = 10, ROWS = 5;
 const CACHE = '.cache/gibs-tiles', OUT = 'public/textures';
 const TIERS = [['4k', 4096, 2048], ['2k', 2048, 1024], ['1k', 1024, 512]];
 
@@ -31,29 +36,37 @@ if (!fs.existsSync(capFile)) {
   if (!d.ok) { markUnavailable('night', `capabilities download failed: ${d.error}`); process.exit(0); }
 }
 const cap = parseCapabilities(fs.readFileSync(capFile, 'utf8'));
-const nLayers = Object.keys(cap.layers).length;
-if (!nLayers) { markUnavailable('night', 'the GIBS capabilities parsed to 0 layers (format changed?)'); process.exit(0); }
-const levelsOf = (t) => cap.tileMatrixSets[t]?.levels ?? 99; // unknown = assume deep enough
-const usable = (i) => cap.layers[i]?.template && cap.layers[i].tileMatrixSets.some((t) => levelsOf(t) > LEVEL);
-const candidates = [...new Set([...SHORTLIST.night, ...Object.keys(cap.layers).filter((i) => /black.?marble|night|dnb/i.test(i))])];
-const id = candidates.find(usable);
-if (!id) { markUnavailable('night', `no usable night-lights layer among ${candidates.length} candidates (${candidates.slice(0, 5).join(', ') || 'none'}) in ${nLayers} layers`); process.exit(0); }
+const ids = Object.keys(cap.layers);
+if (!ids.length) { markUnavailable('night', 'the GIBS capabilities parsed to 0 layers'); process.exit(0); }
 
-const L = cap.layers[id];
-const tms = ['500m', '1km', '2km'].find((t) => L.tileMatrixSets.includes(t) && levelsOf(t) > LEVEL) ?? L.tileMatrixSets.find((t) => levelsOf(t) > LEVEL);
-const time = L.time?.default;
-const ext = ((/\.(png|jpe?g)$/i.exec(L.template) ?? [])[1] ?? 'png').toLowerCase().replace('jpeg', 'jpg');
-console.log(`night layer: ${id} (${tms}, ${time ?? 'no time dimension'}, .${ext})`);
+const priority = [
+  ...SHORTLIST.night.filter((i) => ids.includes(i)),
+  ...ids.filter((i) => /black.?marble/i.test(i) && !SHORTLIST.night.includes(i)),
+  ...ids.filter((i) => /daynight|dnb/i.test(i) && !SHORTLIST.night.includes(i)),
+];
+const candidates = [...new Set(priority)].slice(0, 6);
+if (!candidates.length) {
+  const near = ids.filter((i) => /night|marble|lights/i.test(i) && !/temp|mls_|airs|lst|surface/i.test(i)).slice(0, 8).join(', ') || 'none';
+  markUnavailable('night', `no Black Marble or DayNightBand layer id among ${ids.length} catalog layers (nearest by name: ${near})`);
+  process.exit(0);
+}
+
+let chosen = null;
+const attempts = [];
+for (const id of candidates) {
+  const p = probeLayer(id, { dates: [undefined, 'default'] });
+  attempts.push(`${id} ${JSON.stringify(p.tried)}`);
+  if (p.variant) { chosen = { id, ...p.variant }; break; }
+}
+if (!chosen) { markUnavailable('night', `the tile server answered no variant for ${candidates.join(', ')} (HTTP codes: ${attempts.join('; ').slice(0, 220)})`); process.exit(0); }
+console.log(`night layer: ${chosen.id} (${chosen.tms}, ${chosen.date ?? 'static'}, .${chosen.ext})`);
 
 let missing = 0;
 const composites = [];
 for (let row = 0; row < ROWS; row++) {
   for (let col = 0; col < COLS; col++) {
-    const file = path.join(CACHE, `${id}_L${LEVEL}_${row}_${col}.${ext}`);
-    if (!fs.existsSync(file)) {
-      const url = L.template.replace('{Time}', time ?? 'default').replace('{TileMatrixSet}', tms).replace('{TileMatrix}', String(LEVEL)).replace('{TileRow}', String(row)).replace('{TileCol}', String(col));
-      if (!curlDownload(url, file, { timeout: 60 }).ok) { fs.rmSync(file, { force: true }); missing++; continue; }
-    }
+    const file = path.join(CACHE, `${chosen.id}_${chosen.date ?? 'static'}_L${LEVEL}_${row}_${col}.${chosen.ext}`);
+    if (!fs.existsSync(file) && !curlDownload(tileUrl(chosen.id, chosen, LEVEL, row, col), file, { timeout: 60 }).ok) { fs.rmSync(file, { force: true }); missing++; continue; }
     try {
       const m = await sharp(file).metadata();
       if (m.width !== TILE || m.height !== TILE) throw new Error('bad tile size');
@@ -61,7 +74,7 @@ for (let row = 0; row < ROWS; row++) {
     } catch { fs.rmSync(file, { force: true }); missing++; }
   }
 }
-if (missing > ROWS * COLS * 0.6) { markUnavailable('night', `${missing}/${ROWS * COLS} tiles of ${id} could not be fetched`); process.exit(0); }
+if (missing > ROWS * COLS * 0.6) { markUnavailable('night', `${missing}/${ROWS * COLS} tiles of ${chosen.id} could not be fetched`); process.exit(0); }
 
 const mosaic = await sharp({ create: { width: COLS * TILE, height: ROWS * TILE, channels: 3, background: '#000000' } }).composite(composites).png().toBuffer();
 const now = new Date().toISOString();
@@ -72,12 +85,12 @@ for (const [tier, w, h] of TIERS) {
   const buf = fs.readFileSync(file);
   entries.push({
     id: `earth_night_${tier}`, file: `textures/earth_night_${tier}.jpg`, width: w, height: h,
-    source: 'NASA Global Imagery Browse Services (GIBS)', layer: id, layerTitle: L.title ?? id, projection: 'EPSG:4326', tileMatrixSet: tms, level: LEVEL, tiles: ROWS * COLS - missing,
-    date: time ?? 'static composite (no time dimension)', retrievedAt: now,
+    source: 'NASA Global Imagery Browse Services (GIBS)', layer: chosen.id, layerTitle: cap.layers[chosen.id]?.title ?? chosen.id, projection: 'EPSG:4326', tileMatrixSet: chosen.tms, level: LEVEL, tiles: ROWS * COLS - missing,
+    date: chosen.date ?? 'static composite (no time dimension)', retrievedAt: now,
     license: "NASA open data policy; credit NASA GIBS and the layer's data provider (see the GIBS layer metadata)",
-    attribution: `Night lights: NASA GIBS layer ${id}`,
+    attribution: `Night lights: NASA GIBS layer ${chosen.id}`,
     sha256: crypto.createHash('sha256').update(buf).digest('hex'), bytes: buf.length,
   });
 }
 writeManifest(clearUnavailable({ ...m0, textures: [...m0.textures.filter((t) => !t.id.startsWith('earth_night_')), ...entries] }, 'night'));
-console.log(`built ${entries.length} night textures from ${id} (${ROWS * COLS - missing}/${ROWS * COLS} tiles)`);
+console.log(`built ${entries.length} night textures from ${chosen.id} (${ROWS * COLS - missing}/${ROWS * COLS} tiles)`);

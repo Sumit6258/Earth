@@ -36,7 +36,8 @@ jobs:
           key: textures-${{ hashFiles('scripts/textures/*.mjs') }}
       - name: Build Earth textures from NASA GIBS
         run: npm run textures
-      - run: npm run build
+      - name: Build (falls back to the site without the Cesium preview if that page breaks)
+        run: npm run build || { echo "::warning::full build failed; deploying without the Cesium preview page"; SKIP_CESIUM=1 npm run build; }
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
