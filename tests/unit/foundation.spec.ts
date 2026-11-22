@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { slerpLonLat, lerpLogAlt, interpolateRig, rigToOrbit, orbitToRig, type CameraRig } from '../../src/render/shared/rig';
 import { Orchestrator, DEFAULT_ORCHESTRATOR } from '../../src/app/orchestrator';
 import { fromQuery, toQuery } from '../../src/app/deeplink';
+import { cesiumHref, globeHref, clampThreeAlt } from '../../src/app/links';
 
 const rig = (o: Partial<CameraRig> = {}): CameraRig => ({ lon: 0, lat: 0, alt: 1e7, heading: 0, pitch: -90, roll: 0, fovV: 38, ...o });
 
@@ -63,4 +64,17 @@ test('U-07 share links: strict validation, stable round trip, nothing trusted @M
   expect(fromQuery('d=1850-01-01').errors).toEqual(['d']);                                         // before the instrumental record
   expect(fromQuery('d=2100-12-31').state.date).toBe('2100-12-31');
   expect(fromQuery('').state).toEqual({});
+});
+
+test('U-08 view links carry the camera across pages and survive validation @M2', () => {
+  const view = { lat: 12.3456789, lon: 20.1234567, alt: 16_606_000.4 };
+  const q = cesiumHref(view);
+  expect(q.startsWith('cesium.html?')).toBe(true);
+  const s = fromQuery(q.split('?')[1]);
+  expect(s.errors).toEqual([]);
+  expect(s.state).toMatchObject({ view: 'cesium', lat: 12.3457, lon: 20.1235, alt: 16_606_000 });
+  const back = fromQuery(globeHref({ lat: 5, lon: 5, alt: 900 }).split('?')[1]).state;       // Cesium can be far lower than the globe allows
+  expect(back.alt).toBe(clampThreeAlt(900));
+  expect(clampThreeAlt(1e9)).toBe(44_000_000);
+  expect(fromQuery(cesiumHref({ lat: 0, lon: 0, alt: 3e9 }).split('?')[1]).errors).toEqual([]); // out-of-range altitudes are clamped, not rejected
 });

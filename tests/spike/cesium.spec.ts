@@ -49,3 +49,20 @@ test('S-03 the date control requests exactly that day of MODIS imagery @M2', asy
   await shot(page, info, 'S-03-modis-2023-07-01');
   expect(gate.errors()).toEqual([]);
 });
+
+test('S-04 Explore flies the camera in and the Cesium link carries that exact view @M2', async ({ page }) => {
+  const gate = attachGates(page);
+  await page.goto('/?test=1&q=performance', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => !!(window as unknown as { __EARTH__?: unknown }).__EARTH__, null, { timeout: 60_000 });
+  await page.evaluate(() => (window as unknown as { __EARTH__: { ready: Promise<void> } }).__EARTH__.ready);
+  const before = await page.evaluate(() => (window as unknown as { __EARTH__: { rig(): { alt: number } } }).__EARTH__.rig().alt);
+  await page.getByTestId('explore').click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __EARTH__: { rig(): { alt: number } } }).__EARTH__.rig().alt), { timeout: 30_000 }).toBeLessThan(3_600_000);
+  expect(before).toBeGreaterThan(10_000_000);
+  await expect.poll(async () => Number(new URL((await page.getByTestId('zoom').getAttribute('href'))!, 'http://x/').searchParams.get('alt')), { timeout: 10_000 }).toBeLessThan(3_700_000);
+  const u = new URL((await page.getByTestId('zoom').getAttribute('href'))!, 'http://x/');
+  expect(u.pathname.endsWith('cesium.html')).toBe(true);
+  expect(u.searchParams.get('view')).toBe('cesium');
+  expect(Number.isFinite(Number(u.searchParams.get('lat')))).toBe(true);
+  expect(gate.errors()).toEqual([]);
+});

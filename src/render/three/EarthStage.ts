@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { WGS84_A, geodeticToEcef, ecefToThree, geodeticNormal } from '../../geo/ecef';
 import { sunDirectionEcef, subsolarPoint } from '../../geo/sky';
+import { interpolateRig, rigToOrbit, type CameraRig } from '../shared/rig';
 import earthVert from './shaders/earth.vert.glsl?raw';
 import surfaceFrag from './shaders/surface.frag.glsl?raw';
 import atmosphereCore from './shaders/atmosphere.glsl?raw';
@@ -63,6 +64,7 @@ export class EarthStage {
   private cloudMat: THREE.ShaderMaterial | null = null;
   private clouds: THREE.Mesh | null = null;
   private stars!: THREE.Points;
+  private fly: { from: CameraRig; to: CameraRig; t0: number; ms: number } | null = null;
   private yaw: number;
   private pitch = 20 * RAD;
   private dist = 3.6;
@@ -136,6 +138,21 @@ export class EarthStage {
   /** The simulated UTC instant being lit (real Sun position for this time). */
   simDate(): Date { return new Date(this.baseMs + (performance.now() - this.t0) * this.opts.timeRate); }
 
+  /** Jump the camera to a position (degrees, metres above the ellipsoid). */
+  setRig(r: Pick<CameraRig, 'lon' | 'lat' | 'alt'>) {
+    const o = rigToOrbit(r);
+    this.fly = null;
+    this.yaw = o.yaw;
+    this.pitch = Math.max(-1.35, Math.min(1.35, o.pitch));
+    this.dist = Math.max(1.35, Math.min(8, o.dist));
+  }
+
+  /** Fly the camera along a great circle with log-space altitude. Any drag or wheel input cancels the flight. */
+  flyTo(to: CameraRig, ms = 2200) {
+    if (this.disposed) return;
+    this.fly = { from: this.rig(), to, t0: performance.now(), ms };
+  }
+
   start() { this.running = true; this.renderer.setAnimationLoop(this.tick); }
   stop() { this.running = false; this.renderer.setAnimationLoop(null); }
 
@@ -159,6 +176,13 @@ export class EarthStage {
     const s = ecefToThree(sunDirectionEcef(sim));
     if (this.clouds) this.clouds.rotation.y = -((sim.getTime() - this.baseMs) / 1000) * 1.5e-6; // illustrative drift against the ground
     this.sun.set(s[0], s[1], s[2]);
+    if (this.fly) {
+      const p = Math.min(1, (performance.now() - this.fly.t0) / this.fly.ms);
+      const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; // ease in-out
+      const o = rigToOrbit(interpolateRig(this.fly.from, this.fly.to, e));
+      this.yaw = o.yaw; this.pitch = o.pitch; this.dist = Math.max(1.35, o.dist);
+      if (p >= 1) this.fly = null;
+    }
     const c = Math.cos(this.pitch);
     this.camera.position.set(this.dist * c * Math.sin(this.yaw), this.dist * Math.sin(this.pitch), this.dist * c * Math.cos(this.yaw));
     this.camera.lookAt(0, 0, 0);
@@ -192,7 +216,7 @@ export class EarthStage {
 
   private bindInput() {
     let down = false, lx = 0, ly = 0;
-    this.canvas.addEventListener('pointerdown', (e) => { down = true; lx = e.clientX; ly = e.clientY; this.canvas.setPointerCapture(e.pointerId); });
+    this.canvas.addEventListener('pointerdown', (e) => { this.fly = null; down = true; lx = e.clientX; ly = e.clientY; this.canvas.setPointerCapture(e.pointerId); });
     this.canvas.addEventListener('pointermove', (e) => {
       if (!down) return;
       const k = 0.005 * Math.min(1, this.dist / 3);
@@ -203,6 +227,6 @@ export class EarthStage {
     const up = () => { down = false; };
     this.canvas.addEventListener('pointerup', up);
     this.canvas.addEventListener('pointercancel', up);
-    this.canvas.addEventListener('wheel', (e) => { e.preventDefault(); this.dist = Math.max(1.35, Math.min(8, this.dist * Math.exp(e.deltaY * 0.001))); }, { passive: false });
+    this.canvas.addEventListener('wheel', (e) => { e.preventDefault(); this.fly = null; this.dist = Math.max(1.35, Math.min(8, this.dist * Math.exp(e.deltaY * 0.001))); }, { passive: false });
   }
 }

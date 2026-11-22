@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { EarthStage } from './render/three/EarthStage';
 import { subsolarPoint } from './geo/sky';
+import { fromQuery } from './app/deeplink';
+import { cesiumHref, clampThreeAlt } from './app/links';
 
 type Tier = 'high' | 'balanced' | 'performance';
 const TIERS: Record<Tier, { tex: string[]; dpr: number; lonSeg: number; latSeg: number; atmoView: number; atmoLight: number }> = {
@@ -15,6 +17,7 @@ interface TextureEntry { id: string; file: string; source: string; layer: string
 
 const params = new URLSearchParams(location.search);
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const shared = fromQuery(params).state; // a validated view carried over from the Cesium page
 const asked = params.get('q');
 const tier: Tier = asked === 'high' || asked === 'balanced' || asked === 'performance' ? asked
   : (navigator.hardwareConcurrency ?? 8) <= 4 ? 'performance' : /Mobi|Android/i.test(navigator.userAgent) ? 'balanced' : 'high';
@@ -76,6 +79,8 @@ async function boot() {
   if (!hasWebGL2()) return showFallback('This browser cannot run WebGL 2, so the 3D globe is unavailable. The data sources are listed below.');
   const t = TIERS[tier];
   stage = new EarthStage($<HTMLCanvasElement>('#c'), { dpr: t.dpr, lonSeg: t.lonSeg, latSeg: t.latSeg, timeRate: reduced ? 0 : TIME_RATE, atmoView: t.atmoView, atmoLight: t.atmoLight });
+  if (shared.lat !== undefined && shared.lon !== undefined && shared.alt !== undefined) stage.setRig({ lon: shared.lon, lat: shared.lat, alt: clampThreeAlt(shared.alt) });
+  startLinks();
   const loader = new THREE.TextureLoader();
   let first = true;
   for (const size of t.tex) {
@@ -106,6 +111,18 @@ async function loadClouds(t: (typeof TIERS)[Tier], manifest: TextureEntry[]) {
   for (const size of t.tex) {
     try { stage.setCloudMap(await loader.loadAsync(`textures/earth_clouds_${size}.jpg`)); } catch { break; }
   }
+}
+
+/** The opening's invitation, and a link that carries the current camera position to the zoomable imagery. */
+function startLinks() {
+  const zoom = $<HTMLAnchorElement>('#zoom'), explore = $<HTMLButtonElement>('#explore');
+  explore.addEventListener('click', () => {
+    const r = stage?.rig();
+    if (stage && r) stage.flyTo({ ...r, alt: 3_500_000 }, reduced ? 1 : 2400);
+  });
+  const update = () => { const r = stage?.rig(); if (r) zoom.href = cesiumHref(r); };
+  update();
+  setInterval(update, 500);
 }
 
 /** Small observational readout: the simulated UTC instant and where the Sun is overhead. */

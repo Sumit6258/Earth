@@ -1,9 +1,12 @@
 import { gibsUrl, utcDay } from './geo/gibs';
+import { fromQuery } from './app/deeplink';
+import { globeHref } from './app/links';
 
 // Cesium's workers and assets are served from /cesium/ (copied by scripts/copy-cesium.mjs). Set before Cesium loads.
 (window as unknown as { CESIUM_BASE_URL: string }).CESIUM_BASE_URL = '/cesium/';
 
 const params = new URLSearchParams(location.search);
+const share = fromQuery(params).state; // validated: anything malformed is dropped
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
 let resolveReady!: () => void;
 const ready = new Promise<void>((r) => { resolveReady = r; });
@@ -47,12 +50,12 @@ async function main() {
 
   const dateInput = $<HTMLInputElement>('#date'), box = $<HTMLInputElement>('#truecolor');
   dateInput.max = utcDay(-1);
-  dateInput.value = params.get('d') ?? utcDay(-1);
+  dateInput.value = share.date ?? utcDay(-1);
   box.addEventListener('change', () => (box.checked ? setDate(dateInput.value) : unsetDate()));
   dateInput.addEventListener('change', () => { if (box.checked && dateInput.value) setDate(dateInput.value); });
-  if (params.get('l') === 'truecolor') { box.checked = true; setDate(dateInput.value); }
+  if (share.layers?.includes('truecolor')) { box.checked = true; setDate(dateInput.value); }
 
-  const lon = Number(params.get('lon') ?? 20), lat = Number(params.get('lat') ?? 15), alt = Number(params.get('alt') ?? 12_000_000);
+  const lon = share.lon ?? 20, lat = share.lat ?? 15, alt = share.alt ?? 12_000_000;
   widget.camera.setView({ destination: Cesium.Cartesian3.fromDegrees(lon, lat, alt) });
 
   let frames = 0, last = 0;
@@ -63,6 +66,7 @@ async function main() {
     if (now - last < 500) return;
     last = now;
     const c = Cesium.Cartographic.fromCartesian(widget.camera.positionWC);
+    if (c) $<HTMLAnchorElement>('#back').href = globeHref({ lat: Cesium.Math.toDegrees(c.latitude), lon: Cesium.Math.toDegrees(c.longitude), alt: c.height });
     if (c) $('#pos').textContent = `${Math.abs(Cesium.Math.toDegrees(c.latitude)).toFixed(2)}°${c.latitude < 0 ? 'S' : 'N'} ${Math.abs(Cesium.Math.toDegrees(c.longitude)).toFixed(2)}°${c.longitude < 0 ? 'W' : 'E'} · height ${(c.height / 1000).toFixed(0)} km`;
   });
 

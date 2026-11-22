@@ -17,6 +17,9 @@
     #status { margin: .5rem 0 0; max-width: 60ch; color: #9aa4ab; font-size: 11px; letter-spacing: .06em; }
     article { align-self: end; max-width: 46ch; color: #c3cace; }
     article p { margin: 0 0 .8rem; }
+    #tagline { margin: .7rem 0 .9rem; font: italic 300 clamp(15px, 1.6vw, 20px)/1.2 Georgia, serif; color: #dfe5e9; }
+    #explore { pointer-events: auto; background: none; border: 0; border-bottom: 1px solid #ffffff40; padding: .4rem 0; margin: 0 0 .8rem; color: #e8ebed; font: inherit; font-size: 11px; letter-spacing: .4em; text-transform: uppercase; cursor: pointer; }
+    #explore:hover { border-bottom-color: #e8ebed; }
     #clock { margin: .2rem 0 0; color: #c3cace; font-size: 11px; letter-spacing: .08em; }
     #nogl-fallback { align-self: center; max-width: 60ch; }
     details { pointer-events: auto; position: fixed; right: clamp(16px, 3vw, 40px); bottom: clamp(16px, 3vw, 40px); max-width: min(92vw, 720px); background: #000c; padding: .5rem .75rem; font-size: 11px; }
@@ -31,6 +34,8 @@
   <main>
     <header>
       <h1>EARTH</h1>
+      <p id="tagline">A Living Planet. A Changing Future.</p>
+      <button id="explore" type="button" data-testid="explore">Explore our planet</button>
       <p id="status" data-testid="status">Loading NASA imagery…</p>
       <p id="clock" data-testid="clock"></p>
     </header>
@@ -41,7 +46,7 @@
       <article data-testid="chapter-text">
         <p>The surface is NASA's Blue Marble imagery (shaded relief and bathymetry) from NASA GIBS, drawn on a WGS84 ellipsoid and lit by the Sun's real position for the simulated time. The atmosphere is computed, not painted. The starfield is decorative, not a star map.</p>
       </article>
-      <p><a href="cesium.html" style="pointer-events:auto;color:#c3cace">Zoom into the real satellite imagery (Cesium preview) →</a></p>
+      <p><a id="zoom" data-testid="zoom" href="cesium.html" style="pointer-events:auto;color:#c3cace">Zoom into the real satellite imagery (Cesium preview) →</a></p>
       <p id="build" data-testid="build-info"></p>
       <p>© 2026 Sumit Suman. All rights reserved. Privately owned project; not open source.</p>
     </footer>
