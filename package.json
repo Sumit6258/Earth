@@ -19,6 +19,7 @@
     "gibs:catalog": "node scripts/gibs-catalog.mjs",
     "accept:M0": "playwright test --grep \"@M0\\b\"",
     "textures": "node scripts/textures/build-earth-textures.mjs && node scripts/textures/build-night-lights.mjs && node scripts/textures/build-clouds.mjs",
+    "data": "node scripts/data/build-co2.mjs",
     "accept:M1": "playwright test --grep \"@M[01]\\b\"",
     "accept:M2": "playwright test --grep \"@M[012]\\b\""
   },

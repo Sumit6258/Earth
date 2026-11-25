@@ -26,6 +26,11 @@
     summary { cursor: pointer; letter-spacing: .14em; text-transform: uppercase; color: #9aa4ab; }
     table { border-collapse: collapse; margin-top: .6rem; } th, td { text-align: left; padding: .2rem .8rem .2rem 0; vertical-align: top; color: #c3cace; } th { color: #9aa4ab; font-weight: 400; }
     footer { color: #6b757c; font-size: 11px; } footer p { margin: .1rem 0; }
+    #co2 { pointer-events: auto; position: fixed; right: clamp(16px, 3vw, 40px); top: clamp(16px, 3vw, 40px); width: min(320px, 90vw); background: #000b; padding: .7rem .9rem; font-size: 11px; }
+    #co2 h2 { margin: 0 0 .5rem; font: 300 11px/1.2 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .14em; text-transform: uppercase; color: #9aa4ab; }
+    #co2 p { margin: .3rem 0; color: #c3cace; } #co2 a { color: #e8ebed; } #co2 svg { width: 100%; height: auto; display: block; }
+    #co2 input[type=range] { width: 70%; vertical-align: middle; } #co2-yr { font-size: 15px; font-weight: 400; } #co2-kind { color: #9aa4ab; letter-spacing: .12em; font-size: 10px; } #co2-note { color: #e08a2e; }
+    @media (max-width: 720px) { #co2 { top: auto; bottom: 4.2rem; right: 12px; } }
     :focus-visible { outline: 1px solid #e8ebed; outline-offset: 3px; }
   </style>
 </head>
@@ -54,10 +59,25 @@
   <details id="sources">
     <summary>Data sources</summary>
     <table data-testid="dataset-table">
-      <thead><tr><th>Texture</th><th>GIBS layer</th><th>Source</th><th>Retrieved</th><th>Licence</th></tr></thead>
+      <thead><tr><th>Item</th><th>Layer or dataset</th><th>Source</th><th>Retrieved</th><th>Licence</th></tr></thead>
       <tbody id="dataset-rows"></tbody>
     </table>
   </details>
+  <aside id="co2" data-testid="co2-panel" aria-labelledby="co2-title" hidden>
+    <h2 id="co2-title">Atmospheric CO₂ · Mauna Loa</h2>
+    <p id="co2-state" data-testid="layer-unavailable" hidden></p>
+    <div id="co2-body" hidden>
+      <svg id="co2-chart" viewBox="0 0 300 80" role="img" aria-label="Annual mean CO₂ at Mauna Loa, 1959 to the latest complete year">
+        <path id="co2-line" fill="none" stroke="#c3cace" stroke-width="1"/>
+        <circle id="co2-dot" r="2.5" fill="#e08a2e" visibility="hidden"/>
+      </svg>
+      <label>Year <input id="co2-year" data-testid="co2-year" type="range" step="1" aria-label="Year"></label>
+      <p id="co2-read"><b id="co2-yr" data-testid="observation-date"></b> <span id="co2-val"></span> <span id="co2-kind" data-testid="kind-badge" data-kind="observed">OBSERVED</span></p>
+      <p id="co2-note" data-testid="coverage-note" hidden></p>
+      <p data-testid="legend"><span data-testid="legend-units">parts per million (ppm), dry-air mole fraction; annual mean</span></p>
+      <p><a data-testid="source-link" href="https://gml.noaa.gov/ccgg/trends/" rel="noopener">NOAA Global Monitoring Laboratory</a> · measured at 3,397 m on Mauna Loa, Hawaii</p>
+    </div>
+  </aside>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

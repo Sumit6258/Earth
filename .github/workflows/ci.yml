@@ -46,6 +46,11 @@ jobs:
         continue-on-error: true
         run: npm run textures
 
+      - name: Build data layers (NOAA CO2)
+        id: data
+        continue-on-error: true
+        run: npm run data
+
       - name: Preflight (Gate 0)
         id: preflight
         continue-on-error: true

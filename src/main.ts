@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { EarthStage } from './render/three/EarthStage';
 import { subsolarPoint } from './geo/sky';
 import { fromQuery } from './app/deeplink';
+import { initCo2 } from './ui/co2-panel';
 import { cesiumHref, clampThreeAlt } from './app/links';
 
 type Tier = 'high' | 'balanced' | 'performance';
@@ -12,7 +13,8 @@ const TIERS: Record<Tier, { tex: string[]; dpr: number; lonSeg: number; latSeg: 
 };
 const TIME_RATE = 600; // simulated seconds per real second: a full day in 2.4 minutes
 
-interface Manifest { textures: TextureEntry[]; unavailable?: Record<string, string> }
+interface DatasetEntry { id: string; title: string; source: string; url: string; coverage: string; units: string; retrievedAt: string; license: string; kind: string }
+interface Manifest { textures: TextureEntry[]; datasets?: DatasetEntry[]; unavailable?: Record<string, string> }
 interface TextureEntry { id: string; file: string; source: string; layer: string; retrievedAt: string; license: string; attribution: string }
 
 const params = new URLSearchParams(location.search);
@@ -51,12 +53,13 @@ async function loadManifest(): Promise<Manifest> {
   return (await r.json()) as Manifest;
 }
 
-function fillTable(rows: TextureEntry[]) {
+function fillTable(rows: TextureEntry[], datasets: DatasetEntry[] = []) {
   const body = $('#dataset-rows');
   body.replaceChildren();
-  for (const t of rows) {
+  const all = [...rows.map((t) => [t.id, t.layer, t.source, t.retrievedAt.slice(0, 10), t.license]), ...datasets.map((d) => [d.id, `${d.title} (${d.coverage}; ${d.units})`, d.source, d.retrievedAt.slice(0, 10), d.license])];
+  for (const cells of all) {
     const tr = document.createElement('tr');
-    for (const v of [t.id, t.layer, t.source, t.retrievedAt.slice(0, 10), t.license]) {
+    for (const v of cells) {
       const td = document.createElement('td');
       td.textContent = v;
       tr.append(td);
@@ -75,7 +78,8 @@ function showFallback(reason: string) {
 async function boot() {
   const mf = await loadManifest().catch(() => ({ textures: [] }) as Manifest);
   const manifest = mf.textures;
-  fillTable(manifest);
+  fillTable(manifest, mf.datasets);
+  void initCo2(mf);
   if (!hasWebGL2()) return showFallback('This browser cannot run WebGL 2, so the 3D globe is unavailable. The data sources are listed below.');
   const t = TIERS[tier];
   stage = new EarthStage($<HTMLCanvasElement>('#c'), { dpr: t.dpr, lonSeg: t.lonSeg, latSeg: t.latSeg, timeRate: reduced ? 0 : TIME_RATE, atmoView: t.atmoView, atmoLight: t.atmoLight });

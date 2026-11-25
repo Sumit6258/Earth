@@ -66,3 +66,22 @@ test('S-04 Explore flies the camera in and the Cesium link carries that exact vi
   expect(Number.isFinite(Number(u.searchParams.get('lat')))).toBe(true);
   expect(gate.errors()).toEqual([]);
 });
+
+test('L-01 the CO2 panel shows real NOAA values with units, source and honest limits @M3', async ({ page }, info) => {
+  const gate = attachGates(page);
+  await page.goto('/?test=1&q=performance', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('co2-panel')).toBeVisible();
+  await expect(page.getByTestId('legend-units')).toBeVisible(); // fails, with the reason on screen, if the dataset did not build
+  const json = await (await page.request.get('/data/co2-mlo.json')).json() as { annual: { year: number; ppm: number }[] };
+  const row = json.annual.find((r) => r.year === 2000)!;
+  await page.getByTestId('co2-year').fill('2000');
+  await expect(page.getByTestId('observation-date')).toHaveText('2000');
+  await expect(page.locator('#co2-val')).toContainText(row.ppm.toFixed(2));
+  expect(await page.getByTestId('kind-badge').getAttribute('data-kind')).toBe('observed');
+  expect(await page.getByTestId('source-link').getAttribute('href')).toMatch(/^https:\/\/gml\.noaa\.gov/);
+  await page.getByTestId('co2-year').fill('1900');
+  await expect(page.getByTestId('coverage-note')).toContainText(/before 1959/);
+  await expect(page.getByTestId('kind-badge')).toBeHidden();      // no measurement, so no "observed" label
+  await shot(page, info, 'L-01-co2-1900-no-measurement');
+  expect(gate.errors()).toEqual([]);
+});
